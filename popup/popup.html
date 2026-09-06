@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header class="head">
+    <div class="brand">🖼️ Ads → Art</div>
+    <label class="switch" title="Turn on or off everywhere">
+      <input type="checkbox" id="enabled" checked />
+      <span class="slider"></span>
+    </label>
+  </header>
+
+  <label class="coll-label" for="collection">Gallery</label>
+  <select id="collection" class="coll-select"></select>
+
+  <section class="stats">
+    <div class="stat"><div class="v" id="todayCount">0</div><div class="k">ads → art today</div></div>
+    <div class="stat"><div class="v" id="totalCount">0</div><div class="k">all time</div></div>
+    <div class="stat"><div class="v" id="artCount">—</div><div class="k">masterpieces</div></div>
+  </section>
+
+  <section class="museum">
+    <div class="m-head">
+      <span>🏛️ Your museum</span>
+      <span class="m-count" id="seenCount">0/32</span>
+    </div>
+    <div class="bar"><div id="museumBar"></div></div>
+    <div class="m-milestone" id="milestoneText">Discover artworks to earn curator titles</div>
+  </section>
+
+  <button id="shareWeek" class="site-btn share">📤 Weekly gallery card</button>
+  <button id="siteToggle" class="site-btn">Disable on this site</button>
+
+  <p class="hint">Artworks load from Wikimedia Commons (public domain). If a page blocks them, you still get a museum plaque.</p>
+  <p class="credit">Made for the free and open web.</p>
+
+  <script src="../lib/artworks.js?v=1.2"></script>
+  <script src="../lib/museum.js?v=1.2"></script>
+  <script src="../lib/weekcard.js?v=1.2"></script>
+  <script src="../lib/mock.js?v=1.2"></script>
+  <script src="popup.js?v=1.2"></script>
+</body>
+</html>
