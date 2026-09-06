@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<!-- Dev harness: a fake "ad-heavy article" page to test the content script
+     outside chrome://extensions. Open via http (any static server), not file:. -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ads → Art — test page</title>
+  <style>
+    body {
+      margin: 0; background: #f5f4f0; color: #222;
+      font-family: Georgia, serif;
+    }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 32px 20px 80px; }
+    h1 { font-size: 30px; margin-bottom: 6px; }
+    .byline { color: #777; font-size: 13px; font-family: sans-serif; margin-bottom: 24px; }
+    p { font-size: 17px; line-height: 1.7; margin-bottom: 18px; }
+    /* --- the fake ad slots --- */
+    .banner-ad, .sidebar-ad, .inline-ad, .ad-box {
+      background: #e8e8e8; border: 1px dashed #bbb; overflow: hidden;
+    }
+    .leaderboard { height: 90px; margin: 0 0 24px; }
+    .inline-ad { height: 250px; margin: 24px 0; }
+    .grid { display: grid; grid-template-columns: 1fr 300px; gap: 24px; }
+    .sidebar-ad { height: 600px; }
+    .row-of-ads { display: flex; gap: 12px; margin: 24px 0; }
+    .ad-box { flex: 1; height: 120px; }
+    .ad-label { font-family: sans-serif; font-size: 11px; color: #999; padding: 6px 8px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- 1. Strong selector: ins.adsbygoogle -->
+    <ins class="adsbygoogle leaderboard" style="display:block"></ins>
+
+    <h1>The Quiet Rise of Boring Technology</h1>
+    <div class="byline">A test article · 4 min read</div>
+
+    <p>Every few years the industry rediscovers that most software is, in fact,
+    plumbing. The tools that win are rarely the clever ones; they are the ones
+    still running a decade later, maintained by people who valued sleep over
+    sophistication.</p>
+
+    <!-- 2. Name-based: class contains "inline-ad" -->
+    <div class="inline-ad" id="promo-slot-1"><div class="ad-label">ADVERTISEMENT</div></div>
+
+    <p>Consider the spreadsheet. It survived every paradigm shift of the last
+    forty years not by winning arguments but by quietly being enough. The
+    lesson generalizes: durability beats elegance.</p>
+
+    <div class="grid">
+      <div>
+        <p>When you build something today, the most important question is not
+        what it can do, but who will understand it in five years. Complexity
+        compounds like debt; simplicity compounds like trust.</p>
+        <p>So the next time a tool promises to be revolutionary, ask it the
+        boring question: will this still exist, unhugged and unfunded, in
+        2036?</p>
+      </div>
+      <!-- 3. Name-based: id contains "ad" (sidebar) -->
+      <div class="sidebar-ad" id="ad-sidebar"><div class="ad-label">AD</div></div>
+    </div>
+
+    <!-- 4. Row of small boxes, name-based -->
+    <div class="row-of-ads">
+      <div class="ad-box"><div class="ad-label">Ad</div></div>
+      <div class="ad-box" id="sponsored-2"><div class="ad-label">Sponsored</div></div>
+      <div class="ad-box ad"><div class="ad-label">Ad</div></div>
+    </div>
+
+    <p>If the extension is working, every gray dashed box above is now a
+    painting. Reload to reshuffle the gallery.</p>
+  </div>
+
+  <script>/* honor ?collection=... for theme testing */
+    window.__adsArtCollection = new URLSearchParams(location.search).get("collection") || undefined;
+  </script>
+  <script src="../lib/mock.js?v=1.2"></script>
+  <script src="../lib/artworks.js?v=1.2"></script>
+  <script src="../lib/quotes.js?v=1.2"></script>
+  <script src="../content/art.js?v=1.2c"></script>
+</body>
+</html>

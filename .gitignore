@@ -1,0 +1,10 @@
+# Build output
+dist/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
