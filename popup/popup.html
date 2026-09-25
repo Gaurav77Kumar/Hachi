@@ -2,45 +2,204 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
-  <header class="head">
-    <div class="brand">🖼️ Ads → Art</div>
-    <label class="switch" title="Turn on or off everywhere">
-      <input type="checkbox" id="enabled" checked />
-      <span class="slider"></span>
-    </label>
+  <header class="app-header">
+    <div class="brand-lockup">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48"><path d="M24 38V20M23 26c-7 0-12-4-13-11 7-1 13 2 13 8M25 22c1-7 6-11 13-11-1 8-5 12-13 12M24 33c-5 0-9-3-10-8 5-1 10 1 10 6M25 36c5 0 9-3 10-8-5-1-10 1-10 6" /></svg>
+      </div>
+      <div>
+        <div class="brand-name">Hachi</div>
+        <div class="tagline">A calmer, more beautiful web.</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <label class="switch" title="Turn Hachi on or off everywhere">
+        <input type="checkbox" id="enabled" checked aria-label="Turn Hachi on or off everywhere" />
+        <span class="slider"></span>
+      </label>
+      <button class="icon-button" id="closeButton" type="button" aria-label="Close Hachi">
+        <svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
   </header>
 
-  <label class="coll-label" for="collection">Gallery</label>
-  <select id="collection" class="coll-select"></select>
+  <nav class="main-nav" aria-label="Hachi sections">
+    <button class="nav-item active" data-view="home" type="button">
+      <svg viewBox="0 0 24 24"><path d="m3 11 9-8 9 8v9a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg><span>Home</span>
+    </button>
+    <button class="nav-item" data-view="gallery" type="button">
+      <svg viewBox="0 0 24 24"><path d="M20.8 5.7a5.5 5.5 0 0 0-7.8 0L12 6.8l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 22l8.8-8.5a5.5 5.5 0 0 0 0-7.8z"/></svg><span>Gallery</span>
+    </button>
+    <button class="nav-item" data-view="stats" type="button">
+      <svg viewBox="0 0 24 24"><path d="M4 20V10h4v10H4zm6 0V4h4v16h-4zm6 0v-7h4v7h-4z"/></svg><span>Stats</span>
+    </button>
+    <button class="nav-item" data-view="settings" type="button">
+      <svg viewBox="0 0 24 24"><path d="M9.6 3h4.8l.6 3 2 .9 2.6-1.6 2.4 4.1-2.4 2.1v2l2.4 2.1-2.4 4.1-2.6-1.6-2 .9-.6 3H9.6L9 20.1l-2-.9-2.6 1.6L2 16.6l2.4-2.1v-2L2 10.4l2.4-4.1L7 7.9l2-.9z"/><circle cx="12" cy="12" r="3"/></svg><span>Settings</span>
+    </button>
+  </nav>
 
-  <section class="stats">
-    <div class="stat"><div class="v" id="todayCount">0</div><div class="k">ads → art today</div></div>
-    <div class="stat"><div class="v" id="totalCount">0</div><div class="k">all time</div></div>
-    <div class="stat"><div class="v" id="artCount">—</div><div class="k">masterpieces</div></div>
-  </section>
+  <main id="mainContent">
+    <section class="view active" id="view-home" data-panel="home">
+      <div class="page-heading">
+        <h1>Welcome back</h1>
+        <p>Let every page become a little more beautiful.</p>
+      </div>
 
-  <section class="museum">
-    <div class="m-head">
-      <span>🏛️ Your museum</span>
-      <span class="m-count" id="seenCount">0/32</span>
+      <article class="featured-card" id="featuredCard" role="button" tabindex="0" aria-label="Open featured artwork details">
+        <div class="featured-copy">
+          <div class="eyebrow" id="featuredEyebrow">Today’s Artwork</div>
+          <h2 id="featuredTitle">The Starry Night</h2>
+          <p class="featured-artist" id="featuredArtist">Vincent van Gogh · 1889</p>
+          <blockquote id="featuredQuote">“Even in the darkest nights, there are stars.”</blockquote>
+          <div class="story-copy" id="featuredStory" hidden></div>
+          <div class="featured-actions">
+            <button class="secondary-button" id="readStory" type="button"><span>◷</span> Read the story</button>
+            <button class="primary-button" id="openSource" type="button"><span>↗</span> View source</button>
+          </div>
+        </div>
+        <div class="featured-visual">
+          <img id="featuredImage" referrerpolicy="no-referrer" decoding="async" alt="" />
+        </div>
+      </article>
+
+      <div class="stats-grid home-stats" aria-label="Hachi statistics">
+        <article class="stat-card"><div class="stat-icon image-icon">▧</div><div><strong id="homeTodayCount">0</strong><span>Ads replaced<br />today</span></div></article>
+        <article class="stat-card"><div class="stat-icon">◷</div><div><strong id="homeTimeCount">0m</strong><span>Time with art<br />today</span></div></article>
+        <article class="stat-card"><div class="stat-icon palette-icon">●</div><div><strong id="homeArtCount">0</strong><span>Artworks<br />in gallery</span></div></article>
+      </div>
+
+      <article class="panel recent-panel">
+        <div class="panel-heading"><h2>Recent Discoveries</h2><button class="text-button" id="recentViewAll" type="button">View all <span>→</span></button></div>
+        <div class="recent-grid" id="recentGrid"></div>
+      </article>
+    </section>
+
+    <section class="view" id="view-gallery" data-panel="gallery" hidden>
+      <div class="page-heading">
+        <h1>My Gallery</h1>
+        <p>Artworks you’ve discovered and saved.</p>
+      </div>
+      <div class="gallery-tabs" role="tablist">
+        <button class="gallery-tab active" data-gallery-filter="all" type="button">All <span id="allCount">0</span></button>
+        <button class="gallery-tab" data-gallery-filter="favorites" type="button"><span class="heart-icon">♡</span> Favorites <span id="favoriteCount">0</span></button>
+        <button class="gallery-tab" data-gallery-filter="collections" type="button"><span>▱</span> Collections <span id="collectionCount">0</span></button>
+      </div>
+      <div class="collection-list" id="collectionList" hidden></div>
+      <div class="art-grid" id="artGrid"></div>
+      <div class="empty-state" id="galleryEmpty" hidden><div>⌕</div><h2>No artworks found</h2><p>Discover more art or choose another collection.</p></div>
+      <button class="create-collection" id="createCollection" type="button"><span>▱</span> Create Collection <b>→</b></button>
+    </section>
+
+    <section class="view" id="view-stats" data-panel="stats" hidden>
+      <div class="page-heading inline-heading">
+        <div><h1>Your Impact</h1><p>Turn everyday browsing into a more beautiful experience.</p></div>
+        <label class="select-wrap"><span class="sr-only">Stats period</span><select id="statsPeriod"><option value="week">This Week</option><option value="month">This Month</option><option value="all">All Time</option></select></label>
+      </div>
+      <div class="stats-grid detailed-stats">
+        <article class="stat-card"><div class="stat-icon image-icon">▧</div><div><strong id="statsTodayCount">0</strong><span>Ads replaced</span></div></article>
+        <article class="stat-card"><div class="stat-icon">◷</div><div><strong id="statsTimeCount">0m</strong><span>Time with art</span></div></article>
+        <article class="stat-card"><div class="stat-icon palette-icon">●</div><div><strong id="statsArtCount">0</strong><span>Artworks viewed</span></div></article>
+      </div>
+      <article class="panel chart-panel">
+        <div class="panel-heading"><h2 id="activityTitle">Daily Activity</h2><div class="segmented" id="activityMetric"><button class="active" data-metric="ads" type="button">Ads Replaced</button><button data-metric="time" type="button">Time (min)</button></div></div>
+        <div class="bar-chart" id="barChart"></div>
+      </article>
+      <article class="panel styles-panel">
+        <div class="panel-heading"><h2>Top Art Styles</h2><button class="icon-text-button" id="styleStatsLink" type="button" aria-label="Explore art styles">→</button></div>
+        <div class="style-stats-content"><div class="donut" id="styleDonut"><div><strong id="donutTotal">0</strong><span>artworks</span></div></div><div class="legend" id="styleLegend"></div></div>
+      </article>
+      <article class="panel artists-panel">
+        <div class="panel-heading"><h2>Top Artists</h2></div>
+        <div class="artists-row" id="artistsRow"></div>
+      </article>
+    </section>
+
+    <section class="view" id="view-settings" data-panel="settings" hidden>
+      <div class="page-heading"><h1>Settings</h1><p>Customize your Hachi experience.</p></div>
+      <article class="settings-card">
+        <h2>Extension</h2>
+        <div class="setting-row"><div class="setting-icon">❧</div><div class="setting-copy"><strong>Enable Hachi</strong><span>Replace ad slots with artworks</span></div><label class="switch small"><input type="checkbox" id="settingsEnabled" /><span class="slider"></span></label></div>
+        <div class="setting-row"><div class="setting-icon eye-icon">◉</div><div class="setting-copy"><strong>Show quotes with artworks</strong><span>Display inspiring quotes alongside art</span></div><label class="switch small"><input type="checkbox" id="showQuotes" /><span class="slider"></span></label></div>
+        <div class="setting-row"><div class="setting-icon expand-icon">⌗</div><div class="setting-copy"><strong>Replace more ad slots</strong><span>Try to replace additional ad spaces</span></div><label class="switch small"><input type="checkbox" id="replaceMore" /><span class="slider"></span></label></div>
+        <div class="setting-row"><div class="setting-icon">⌖</div><div class="setting-copy"><strong>Open artwork details on click</strong><span>Show artist, museum, and story</span></div><label class="switch small"><input type="checkbox" id="showDetails" /><span class="slider"></span></label></div>
+      </article>
+
+      <article class="settings-card">
+        <h2>Art Style</h2><p class="settings-description">Choose the type of artworks you see.</p>
+        <div class="settings-style-grid" id="settingsStyleGrid"></div>
+      </article>
+
+      <article class="settings-card">
+        <h2>Appearance</h2>
+        <div class="appearance-options" id="appearanceOptions">
+          <button class="appearance-button active" data-theme="light" type="button"><span>☼</span> Light <b>✓</b></button>
+          <button class="appearance-button" data-theme="dark" type="button"><span>☾</span> Dark</button>
+          <button class="appearance-button" data-theme="system" type="button"><span>▣</span> System</button>
+        </div>
+      </article>
+
+      <article class="settings-card">
+        <h2>Other</h2>
+        <div class="setting-row"><div class="setting-icon">♢</div><div class="setting-copy"><strong>Daily masterpiece</strong><span>Show a new featured artwork each day</span></div><label class="switch small"><input type="checkbox" id="dailyArtwork" /><span class="slider"></span></label></div>
+        <button class="setting-row link-row" id="weeklyCard" type="button"><div class="setting-icon">▧</div><div class="setting-copy"><strong>Create weekly card</strong><span>Share your recent discoveries</span></div><span class="chevron">›</span></button>
+      </article>
+
+      <article class="settings-card">
+        <div class="panel-heading"><h2>Your Photos</h2><span class="settings-description" id="photoCount">0 / 7</span></div>
+        <input id="customPhotos" type="file" accept="image/*" multiple hidden />
+        <div class="photo-actions">
+          <button id="uploadPhotos" class="upload-btn" type="button">Upload 1–7 photos</button>
+          <button id="usePhotoCollection" class="outline-button" type="button">Use My Photos</button>
+        </div>
+        <p class="upload-hint">JPG, PNG, or WebP. Photos stay on this device.</p>
+        <p id="photoStatus" class="photo-status" aria-live="polite"></p>
+        <div id="photoList" class="photo-list"></div>
+      </article>
+
+      <article class="settings-card site-card">
+        <h2>This Site</h2>
+        <p class="settings-description" id="currentSiteName">Checking current site…</p>
+        <button class="secondary-button full" id="siteToggle" type="button">Disable on this site</button>
+      </article>
+    </section>
+  </main>
+
+  <dialog id="artDialog" class="art-dialog">
+    <button class="dialog-close" data-close-dialog="artDialog" type="button" aria-label="Close artwork details">×</button>
+    <div class="dialog-image"><img id="dialogImage" referrerpolicy="no-referrer" decoding="async" alt="" /></div>
+    <div class="dialog-content">
+      <div class="eyebrow" id="dialogEyebrow">Artwork details</div>
+      <h2 id="dialogTitle"></h2><p class="featured-artist" id="dialogArtist"></p>
+      <blockquote id="dialogQuote"></blockquote>
+      <p class="dialog-fact" id="dialogFact"></p>
+      <div class="dialog-actions"><button class="secondary-button" id="dialogFavorite" type="button">♡ Favorite</button><button class="secondary-button" id="dialogCollection" type="button">＋ Collection</button><button class="primary-button" id="dialogSource" type="button">View source ↗</button></div>
     </div>
-    <div class="bar"><div id="museumBar"></div></div>
-    <div class="m-milestone" id="milestoneText">Discover artworks to earn curator titles</div>
-  </section>
+  </dialog>
 
-  <button id="shareWeek" class="site-btn share">📤 Weekly gallery card</button>
-  <button id="siteToggle" class="site-btn">Disable on this site</button>
+  <dialog id="collectionDialog" class="small-dialog">
+    <button class="dialog-close" data-close-dialog="collectionDialog" type="button" aria-label="Close">×</button>
+    <h2 id="collectionDialogTitle">Create a collection</h2><p>Give a group of artworks a memorable name.</p>
+    <form id="collectionForm"><input id="collectionName" maxlength="40" placeholder="Collection name" required /><button class="primary-button" type="submit">Create</button></form>
+  </dialog>
 
-  <p class="hint">Artworks load from Wikimedia Commons (public domain). If a page blocks them, you still get a museum plaque.</p>
-  <p class="credit">Made for the free and open web.</p>
+  <dialog id="saveDialog" class="small-dialog">
+    <button class="dialog-close" data-close-dialog="saveDialog" type="button" aria-label="Close">×</button>
+    <h2>Add to collection</h2><p>Choose where to save this artwork.</p>
+    <div class="save-list" id="saveList"></div>
+    <form id="quickCollectionForm"><input id="quickCollectionName" maxlength="40" placeholder="New collection name" /><button class="outline-button" type="submit">Create & save</button></form>
+  </dialog>
 
-  <script src="../lib/artworks.js?v=1.2"></script>
-  <script src="../lib/museum.js?v=1.2"></script>
-  <script src="../lib/weekcard.js?v=1.2"></script>
-  <script src="../lib/mock.js?v=1.2"></script>
-  <script src="popup.js?v=1.2"></script>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="../lib/artworks.js?v=1.3"></script>
+  <script src="../lib/quotes.js?v=1.3"></script>
+  <script src="../lib/museum.js?v=1.3"></script>
+  <script src="../lib/weekcard.js?v=1.3"></script>
+  <script src="../lib/mock.js?v=1.3"></script>
+  <script src="popup.js?v=1.3"></script>
 </body>
 </html>
