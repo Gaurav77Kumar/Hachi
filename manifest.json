@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Ads → Art",
-  "version": "1.2.1",
+  "name": "Hachi",
+  "version": "1.1.1",
   "description": "Replace ad slots with famous artworks and a line of culture. Turn the web's ads into a free museum.",
   "permissions": ["storage", "activeTab"],
   "background": {
@@ -16,7 +16,7 @@
   ],
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "Ads → Art",
+    "default_title": "Hachi",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",

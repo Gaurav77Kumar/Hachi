@@ -76,8 +76,8 @@ button { border: 0; cursor: pointer; }
 
 .brand-lockup, .header-actions, .style-promo-copy, .inline-heading, .panel-heading, .featured-actions, .setting-row, .stat-card, .select-wrap, .appearance-button, .upload-btn, .link-row, .nav-item, .featured-floating-actions, .dialog-actions { display: flex; align-items: center; }
 .brand-lockup { gap: 13px; }
-.brand-mark { display: grid; width: 52px; height: 52px; place-items: center; border-radius: 50%; background: #d2a66f; color: #142021; }
-.brand-mark svg { width: 37px; height: 37px; fill: currentColor; stroke-width: 1.2; }
+.brand-mark { display: grid; width: 52px; height: 52px; place-items: center; overflow: hidden; border-radius: 50%; background: #0d3226; }
+.brand-mark img { display: block; width: 46px; height: 46px; object-fit: cover; }
 .brand-name { font-family: Georgia, "Times New Roman", serif; font-size: 30px; font-weight: 700; line-height: 1; letter-spacing: -0.5px; }
 .tagline { margin-top: 7px; color: #b9c0bd; font-size: 12px; }
 .header-actions { position: relative; gap: 13px; }
@@ -325,7 +325,7 @@ select { min-width: 142px; height: 39px; padding: 0 34px 0 13px; border: 1px sol
   .app-header { height: 76px; padding: 10px 14px; }
   .brand-lockup { gap: 9px; }
   .brand-mark { width: 42px; height: 42px; }
-  .brand-mark svg { width: 30px; height: 30px; }
+  .brand-mark img { width: 37px; height: 37px; }
   .brand-name { font-size: 25px; }
   .tagline { margin-top: 5px; font-size: 9px; }
   .header-actions { gap: 5px; }

@@ -180,16 +180,6 @@ function validArtworkKeys() {
   return new Set(catalogArtworks().map(artworkKey));
 }
 
-function allGalleryArtworks() {
-  const savedKeys = new Set([
-    ...Object.keys(appState.seen),
-    ...appState.favorites,
-    ...appState.collections.flatMap((collection) => collection.items),
-    ...appState.customPhotos.map((photo) => `custom:${photo.id}`),
-  ]);
-  return catalogArtworks().filter((artwork) => savedKeys.has(artworkKey(artwork)));
-}
-
 function artImage(artwork, width = 600) {
   return artwork.custom ? artwork.dataUrl : artImageUrl(artwork.file, width);
 }
@@ -348,7 +338,7 @@ async function chooseStyle(style) {
 
 function filteredArtworks() {
   if (galleryFilter === "collections" && !selectedCollection) return [];
-  let artworks = allGalleryArtworks();
+  let artworks = catalogArtworks();
   if (galleryFilter === "favorites") artworks = artworks.filter((artwork) => appState.favorites.includes(artworkKey(artwork)));
   if (selectedCollection) {
     const collection = appState.collections.find((item) => item.id === selectedCollection);
@@ -365,7 +355,7 @@ function renderGallery() {
   const validKeys = validArtworkKeys();
   const favoriteCount = appState.favorites.filter((key) => validKeys.has(key)).length;
   const collectionCount = appState.collections.filter((collection) => collection.items.some((key) => validKeys.has(key))).length;
-  document.getElementById("allCount").textContent = allGalleryArtworks().length;
+  document.getElementById("allCount").textContent = catalogArtworks().length;
   document.getElementById("favoriteCount").textContent = favoriteCount;
   document.getElementById("collectionCount").textContent = collectionCount;
   document.querySelectorAll(".gallery-tab").forEach((button) => button.classList.toggle("active", button.dataset.galleryFilter === galleryFilter));
