@@ -1,10 +1,19 @@
-# Build output
 dist/
 
-# OS junk
+node_modules/
+npm-debug.log*
+coverage/
+
+__pycache__/
+*.py[cod]
+
 .DS_Store
 Thumbs.db
 
 # Editor
 .vscode/
 .idea/
+LAUNCH.md
+LISTING.md
+WAY-TO-UPLOAD.md
+

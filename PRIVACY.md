@@ -1,47 +1,49 @@
-# Ads → Art — Privacy Policy
+# Hachi — Privacy Policy
 
-_Last updated: September 6, 2026_
+_Last updated: September 25, 2026_
 
-Ads → Art replaces advertising slots on the pages you visit with images of
+Hachi replaces detected advertising slots on the pages you visit with images of
 public-domain artworks.
 
-**Short version: the extension collects nothing. There is no server, no
-account, and no analytics. All settings live in your browser.**
+Hachi has no account system, analytics service, or Hachi-operated backend.
+Settings, favorites, collections, photos, and activity statistics are stored in
+the browser's local extension storage.
 
-## What the extension stores (on your device only)
+## What the extension stores on your device
 
-- Your settings: on/off, per-site disables
-- A local counter of how many ad slots were replaced (for the popup stats)
+- Extension settings, including enabled state, style, appearance, and site disables
+- Replacement counters, viewing-time history, discoveries, and curator milestones
+- Favorites and user-created collections
+- Up to seven personal photos you explicitly choose to upload
 
 ## Network activity
 
-The only network requests the extension makes are **image loads from
-Wikimedia Commons** (commons.wikimedia.org), which serves the public-domain
-artwork files. These requests contain no information about you or the page
-beyond standard image fetches. No page content, browsing history, or
-identifiers are ever transmitted to us — because there is no "us": the
-extension has no backend.
+Artwork images and weekly-card thumbnail metadata are retrieved from Wikimedia
+Commons and its image infrastructure. These requests include the artwork
+filename or image URL needed to retrieve the selected file. Hachi uses
+`no-referrer` for content-card image requests, but the receiving service may
+still process ordinary network information such as an IP address.
+
+Hachi does not intentionally send page text, browsing history, page URLs, or
+extension settings to Wikimedia.
 
 ## What we don't do
 
-- We don't collect, transmit, sell, or share any data.
-- We don't read or record the content of pages you visit. The extension
-  modifies the page you see (hiding ad slots, showing art) but stores nothing
-  about the page.
-- We don't have accounts, servers, analytics, trackers, or remote code.
+- We don't collect, sell, or share browsing data.
+- We don't use accounts, analytics, trackers, or remote JavaScript code.
+- We don't intentionally transmit the content of pages you visit.
 
-## Permissions and why each one exists
+## Permissions
 
-| Permission | Why |
+| Permission | Why it is used |
 | --- | --- |
-| Host access to all sites | The extension's entire purpose is replacing ad slots on the pages you visit. It reads nothing and stores nothing about those pages. |
-| `storage` | Keeps your on/off and per-site settings, and the replacement counter, on your device. |
-| `activeTab` | Lets the popup know which site's "Disable on this site" button applies to. |
+| HTTP/HTTPS page access | The content script inspects ordinary web pages for likely ad slots and inserts artwork cards. |
+| `storage` | Keeps settings, favorites, collections, photos, and local activity statistics on your device. |
+| `activeTab` | Lets the popup identify the current site for the per-site disable control. |
 
 ## Data removal
 
-- Toggle the extension off, or remove per-site disables in the popup.
-- Uninstalling the extension deletes all stored settings automatically.
-- There is nothing else to delete — no data exists anywhere else.
-
-
+- Disabling Hachi stops future replacements but does not delete stored data.
+- Removing the extension from Chrome deletes its local extension storage,
+  including settings, collections, photos, and activity history.
+- Removing individual site disables or photos updates local data immediately.

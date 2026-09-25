@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up latest LTS Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Validate manifest
+        run: npm run validate
+
+      - name: Build production package
+        run: npm run package
+
+      - name: Verify production ZIP
+        run: python -c "import glob, zipfile; files = glob.glob('dist/*.zip'); assert files, 'no ZIP was produced'; archive = zipfile.ZipFile(files[0]); assert archive.testzip() is None; assert 'manifest.json' in archive.namelist(); assert 'lib/mock.js' not in archive.namelist()"
+
+      - name: Upload production ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: ads-art-extension
+          path: dist/*.zip
+          if-no-files-found: error

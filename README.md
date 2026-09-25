@@ -1,82 +1,131 @@
-# Ads → Art 🖼️
+# Hachi 
 
-A Chrome extension that replaces ad slots with famous public-domain artworks
-and a line of culture. Instead of an ad for shoes, you get a Vermeer with a
-one-line fact about it.
 
-Built as **viral-machine** — the smallest possible scope with the biggest
-viral ceiling: every replaced ad is a screenshot people want to share.
+Hachi is a privacy-first Chrome extension that replaces detected ad spaces with
+beautiful public-domain artworks, short cultural facts, and optional quotes.
+Your browser becomes a calmer, more beautiful place to read.
+
+All settings, favorites, collections, photos, and activity data stay **local**
+on your device using `chrome.storage`. There are no accounts, no Hachi-operated
+servers, and no analytics. Artwork images are retrieved from Wikimedia Commons.
+
+
+
+---
 
 ## How it works
 
-1. A content script runs on every page (MV3, `<all_urls>`).
-2. It finds ad slots two ways:
-   - **Strong signals** — `ins.adsbygoogle`, `doubleclick.net`/`googlesyndication`
-     iframes, `[id^="div-gpt-ad"]`, taboola/outbrain containers, etc.
-   - **Naming conventions** — id/class tokens like `ad`, `ad-slot`, `banner-ad`,
-     `sponsored` (checked token-by-token so `address` or `advance` never match).
-3. Validated candidates must be reasonably sized (≥120×64), not text-heavy
-   (<300 chars — real content, not an ad shell), not inside nav/header/footer,
-   and not contain forms.
-4. Each slot gets a **Shadow DOM** card overlay: the page's CSS can't touch it,
-   and the page can't read it. The original ad element is hidden, not removed,
-   so layout stays intact.
-5. A **MutationObserver** catches late-loading and SPA-navigated ads.
+- Hachi watches ordinary HTTP and HTTPS pages for likely advertising containers
+  using ad-network signals, naming conventions, visibility, dimensions, and
+  text limits.
+- A valid ad slot is replaced with an isolated **Shadow DOM artwork card**, so
+  page CSS cannot affect the artwork and page scripts cannot modify it.
+- The original element is hidden rather than removed, allowing Hachi to restore
+  the page when the extension is disabled.
+- A debounced **MutationObserver** handles common late-loading ads and
+  single-page-app changes.
+- If an artwork image cannot load, Hachi shows a gradient museum plaque instead
+  of a broken image.
+- You can pause Hachi globally, disable it on the current site, choose a style,
+  and browse your personal gallery.
 
-If the artwork image can't load (offline, site CSP), the card degrades to a
-gradient "museum plaque" — title, artist, year, fact — never a broken page.
+## Getting started
 
-## Gallery
-
-**Themes:** Everything · Classics · Renaissance · Impressionists ·
-Van Gogh · Space (NASA) · Quotes (text-only, no images)
-
-54 public-domain artworks (all artists died before 1935, or NASA imagery)
-served from
-Wikimedia Commons via `Special:FilePath` redirects. Every filename in
-`lib/artworks.js` is verified with HTTP checks; each card has a curated
-one-line fact. Cards never repeat until the pool is exhausted (shuffled queue).
+1. Install Hachi from the Chrome Web Store.
+2. Open the popup and leave **Enable Hachi** turned on.
+3. Browse normally. When Hachi detects a valid ad slot, artwork appears in its
+   place.
+4. Open **Gallery** to review discovered artworks, favorites, and collections.
+5. Open **Settings** to choose a style, change appearance, upload personal
+   photos, or disable Hachi on the current website.
+6. Use **Disable on this site** whenever a page needs to remain exactly as-is.
 
 ## Features
 
-- **Collections** — pick your gallery in the popup: Everything, Classics,
-  Renaissance, Impressionists, Van Gogh, Space (NASA), or text-only Quotes.
-- **Personal museum** — every artwork you discover is marked; earn curator
-  titles (Gallery Visitor → Patron of the Arts → Collector → Curator).
-- **Weekly gallery card** — one click exports a shareable collage of the
-  artworks you encountered this week, with your "ads converted" count.
-- Toggle on/off globally from the popup
-- Per-site disable ("Disable on this site")
-- Daily + all-time replacement counter
-- Zero servers, zero analytics, no accounts — artwork loads direct from
-  Wikimedia Commons
+### 🎨 Artwork gallery
+
+- 69 curated artworks plus 16 quote cards
+- Style groups: Classics, Modern, Nature, Photography, and Architecture
+- Artwork cards include title, artist, year, and a short cultural fact
+- A shuffled artwork deck avoids repeats until its pool is exhausted
+- Artwork detail dialog with the full fact and source link
+
+### 🖼 Personal collection
+
+- **Favorites** — keep the artworks you love close at hand
+- **Collections** — group artworks into custom collections
+- **Recent discoveries** — see what you encountered recently
+- **Search-free gallery browsing** — switch between All, Favorites, and
+  Collections from the popup
+
+### 📊 Stats and progress
+
+- Daily and lifetime ad-replacement counters
+- Active reading-style time with art
+- Daily activity chart for ads replaced and time with art
+- Art-style breakdown and top artists
+- Curator milestones as your personal museum grows
+
+### 🖼 My Photos
+
+- Upload up to seven JPG, PNG, or WebP images
+- Photos are compressed and stored locally on your device
+- **Use My Photos** makes your own images replace detected ad slots
+- Remove individual photos at any time
+
+### 🔔 Appearance and sharing
+
+- Light, Dark, and System appearance modes
+- Daily featured artwork
+- Weekly gallery share card generated locally as a PNG
+- Per-site disable control for pages that should stay unchanged
+
+### 🔒 Privacy first
+
+- No accounts, tracking, analytics, or Hachi-operated backend
+- Settings and activity data remain in local extension storage
+- Artwork images load from Wikimedia Commons
+- Remote artwork image requests use `no-referrer`
+- Automatic ad detection uses conservative checks to reduce false positives
+
+---
+
+## Screenshots
+### Home
+
+![Home — daily artwork, stats, and recent discoveries](assets/Home.png)
+
+### Gallery
+
+![Gallery — artwork grid, favorites, and collections](assets/Gallery.png)
+
+### Stats
+
+![Stats — impact counters, activity chart, and top styles](assets/Stats.png)
+
+### Settings
+
+![Settings — styles, appearance, photos, and site controls](assets/Setting.png)
 
 
-### Done ✅
-- [x] Collections picker (Classics, Renaissance, Impressionists, Van Gogh, Space)
-- [x] Quotes theme (text-only, no images)
-- [x] Personal museum + curator milestones
-- [x] Weekly gallery share card
 
-### v1.3 — depth & delight
-- [ ] **Artwork detail view** — click a card to open the full painting with its
-      story and a link to the museum that holds it
-- [ ] **Personal museum page** — a full-page grid of every artwork you've
-      discovered, with gaps showing what's left to find
-- [ ] **New collections** — Dutch Golden Age, American masters, vintage travel
-      posters, botanical illustration
-- [ ] **Image caching** — store viewed artworks locally after first load
-      (offline-friendly, faster, kinder to Wikimedia)
-- [ ] **"Found 100 ads" share prompt** — celebrate round numbers by surfacing
-      the share card at 100 / 500 / 1000 conversions
 
-### v1.4 — bigger swings
-- [ ] **Theme scheduling** — space at night, impressionists on Sunday mornings;
-      auto-switch themes by time of day or season
-- [ ] **Custom gallery** — let users paste image URLs or drop their own photos
-      into a personal theme
-- [ ] **Sync settings across devices** — move on/off, themes, and museum
-      progress to `chrome.storage.sync`
-- [ ] **Community theme packs** — curated galleries submitted by users
-      (needs a review process; build only if the audience asks)
-- [ ] **Facts in multiple languages** — i18n for captions and facts
+---
+
+## Roadmap ideas (v1.2+)
+
+- **More artwork collections** — Dutch Golden Age, American masters, and
+  vintage travel posters.
+- **Offline artwork cache** — keep viewed artworks available after the first
+  successful image load.
+- **Milestone sharing prompts** — celebrate meaningful replacement milestones
+  with the weekly share card.
+- **More share-card layouts** — add social-friendly sizes and artwork filters.
+- **Time-based artwork styles** — optionally switch styles by time of day or
+  season.
+- **Collection import and export** — move favorites and collections between
+  devices.
+- **Detection diagnostics** — make it easier to report and investigate false
+  positives on specific sites.
+
+---
