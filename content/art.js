@@ -1,22 +1,41 @@
-/* Ads → Art — content script.
+/* Hachi — content script.
 Finds ad slots on any page and overlays a museum card (Shadow DOM, so page
 CSS can't touch it). Falls back to a gradient plaque when the artwork image
 can't load. State lives in chrome.storage so the popup can control it live.
 */
+
 (() => {
   if (window.__adsArtLoaded) return;
   window.__adsArtLoaded = true;
 
-  const WATERMARK = "ads→art";
+  const WATERMARK = "Hachi";
+  const PROCESSED_ATTR = "data-hachi-processed";
+  const HOST_ATTR = "data-hachi-host";
   const MIN_W = 120;
   const MIN_H = 64;
   const MAX_TEXT = 300; 
   const SCAN_DEBOUNCE_MS = 400;
+  const MAX_PENDING_ROOTS = 50;
+  const MAX_CUSTOM_PHOTOS = 7;
+  const MAX_CUSTOM_PHOTO_LENGTH = 900000;
+  const MAX_CUSTOM_PHOTO_TOTAL_LENGTH = 4500000;
 
   window.__adsArtDebug = { replaced: 0, imgsLoaded: 0, imgsFailed: 0 };
 
-  // -- state --
-  const state = { enabled: true, disabledSites: [], collection: "all" };
+  //  state 
+  const state = {
+    enabled: true,
+    disabledSites: [],
+    collection: "classic",
+    customPhotos: [],
+    showQuotes: true,
+    replaceMore: false,
+    showDetails: true,
+  };
+  const replacements = new Map();
+  const countedElements = new WeakSet();
+  const changedSettings = new Set();
+  let started = false;
   let currentSite = location.hostname.replace(/^www\./, "");
 
   function siteDisabled() {
@@ -27,8 +46,8 @@ can't load. State lives in chrome.storage so the popup can control it live.
 
   function refreshState() {
     const active = state.enabled && !siteDisabled();
-    if (active) scheduleScan();
-    else revertAll();
+    if (active && started) scheduleScan();
+    else if (!active) revertAll();
   }
 
   chrome.storage.onChanged.addListener((changes, area) => {
@@ -38,77 +57,154 @@ can't load. State lives in chrome.storage so the popup can control it live.
       fire this listener in every tab — reacting to them would cause a
       full-page rescan per write.
     */
-    const settingsChanged = changes.enabled || changes.disabledSites || changes.collection;
+    const settingsChanged = changes.enabled || changes.disabledSites || changes.collection || changes.customPhotos || changes.showQuotes || changes.replaceMore || changes.showDetails;
+
     if (!settingsChanged) return;
-    if (changes.enabled) state.enabled = changes.enabled.newValue !== false;
-    if (changes.disabledSites) state.disabledSites = changes.disabledSites.newValue || [];
-    if (changes.collection) {
-      state.collection = changes.collection.newValue || "all";
-      queueCollection = null; // deck rebuilds lazily for the new gallery
+
+    if (changes.enabled) {
+      changedSettings.add("enabled");
+      state.enabled = changes.enabled.newValue !== false;
     }
+    if (changes.disabledSites) {
+      changedSettings.add("disabledSites");
+      state.disabledSites = Array.isArray(changes.disabledSites.newValue) ? changes.disabledSites.newValue : [];
+    }
+    if (changes.showQuotes) {
+      changedSettings.add("showQuotes");
+      state.showQuotes = changes.showQuotes.newValue !== false;
+    }
+    if (changes.replaceMore) {
+      changedSettings.add("replaceMore");
+      state.replaceMore = changes.replaceMore.newValue === true;
+    }
+    if (changes.showDetails) {
+      changedSettings.add("showDetails");
+      state.showDetails = changes.showDetails.newValue !== false;
+    }
+    if (changes.customPhotos) {
+      changedSettings.add("customPhotos");
+      state.customPhotos = normalizeCustomPhotos(changes.customPhotos.newValue);
+      queueCollection = null;
+      revertAll();
+    }
+    if (changes.collection) {
+      changedSettings.add("collection");
+      state.collection = typeof changes.collection.newValue === "string" ? changes.collection.newValue : "classic";
+      queueCollection = null;
+      quoteCounter = 0;
+      revertAll();
+    }
+    if (changes.showQuotes) {
+      quoteCounter = 0;
+      revertAll();
+    }
+    if (changes.replaceMore) revertAll();
     refreshState();
   });
 
   const stateReady = chrome.storage.local
-    .get(["enabled", "disabledSites", "collection"])
+    .get(["enabled", "disabledSites", "collection", "customPhotos", "showQuotes", "replaceMore", "showDetails"])
     .then((v) => {
-      if (v.enabled === false) state.enabled = false;
-      if (Array.isArray(v.disabledSites)) state.disabledSites = v.disabledSites;
-      if (v.collection) state.collection = v.collection;
+      if (!changedSettings.has("enabled") && v.enabled === false) state.enabled = false;
+      if (!changedSettings.has("disabledSites") && Array.isArray(v.disabledSites)) state.disabledSites = v.disabledSites;
+      if (!changedSettings.has("collection") && typeof v.collection === "string") state.collection = v.collection;
+      if (!changedSettings.has("customPhotos")) state.customPhotos = normalizeCustomPhotos(v.customPhotos);
+      if (!changedSettings.has("showQuotes") && v.showQuotes === false) state.showQuotes = false;
+      if (!changedSettings.has("replaceMore") && v.replaceMore === true) state.replaceMore = true;
+      if (!changedSettings.has("showDetails") && v.showDetails === false) state.showDetails = false;
       refreshState();
     })
-    .catch(() => {});
+    .catch(() => refreshState());
 
-  // -- detection --
+  //  detection 
   // Tier 1: unmistakable ad-network artifacts.
   const STRONG_SELECTORS = [
     "ins.adsbygoogle",
     "amp-ad",
-    "iframe[src*='doubleclick.net']",
-    "iframe[src*='googlesyndication.com']",
-    "iframe[src*='amazon-adsystem.com']",
-    "iframe[src*='adnxs.com']",
-    "iframe[src*='adsafeprotected.com']",
-    "iframe[src*='2mdn.net']",
     "[id^='google_ads']",
+    "[id*='google_ads_']",
+    "[class*='google-ad']",
     "[id^='div-gpt-ad']",
     "[id^='aswift']",
     "[id^='taboola-']",
     "[class^='taboola-']",
+    "ins[data-ad-format]",
     "[data-ad-slot]",
     "[data-ad-client]",
   ].join(", ");
+  const AD_IFRAME_DOMAINS = [
+    "doubleclick.net",
+    "googlesyndication.com",
+    "amazon-adsystem.com",
+    "adnxs.com",
+    "adsafeprotected.com",
+    "2mdn.net",
+    "googleadservices.com",
+    "adservice.google",
+  ];
 
   // Tier 2: naming conventions (checked token-by-token to avoid false
   // positives like "address" or "advance").
   const EXACT_TOKENS = new Set([
     "ad", "ads", "adv", "advert", "adverts", "advertisement", "advertisements",
     "adbox", "adslot", "adslots", "adframe", "adunit", "adspace", "adsense",
+    "adcontainer", "adwrapper", "advertising", "sidebarad", "bannerad",
+    "leaderboard", "billboard", "sponsorbox", "sponsoredwidget",
     "dfp", "gpt", "banner", "banners", "sponsor", "sponsored",
   ]);
-  const PREFIX_RE = /^(ad|ads|adv|advert|advertisement|adbox|adslot|adunit|adspace|banner|dfp|gpt|sponsor)[-_]/;
+  const CONSERVATIVE_TOKENS = new Set([
+    "ad", "ads", "adv", "advert", "adverts", "advertisement", "advertisements",
+    "adbox", "adslot", "adslots", "adframe", "adunit", "adspace", "adsense",
+    "adcontainer", "adwrapper", "advertising", "sidebarad", "bannerad",
+    "leaderboard", "billboard", "sponsorbox", "sponsoredwidget", "dfp", "gpt",
+  ]);
+  const PREFIX_RE = /^(ad|ads|adv|advert|advertisement|adbox|adslot|adunit|adspace|adcontainer|adwrapper|sidebar|banner|leaderboard|billboard|dfp|gpt|sponsor|sponsored)[-_]/;
+  const CONSERVATIVE_PREFIX_RE = /^(ad|ads|adv|advert|advertisement|adbox|adslot|adunit|adspace|adcontainer|adwrapper|dfp|gpt)[-_]/;
   const SUFFIX_RE = /[-_](ad|ads|advert|advertisement|adslot|adunit|banner)$/;
+  const CONSERVATIVE_SUFFIX_RE = /[-_](ad|ads|advert|advertisement|adslot|adunit)$/;
+
+  function isAdIframe(el) {
+    if (el.tagName !== "IFRAME" || !el.getAttribute("src")) return false;
+    try {
+      const host = new URL(el.getAttribute("src"), location.href).hostname.toLowerCase();
+      return AD_IFRAME_DOMAINS.some((domain) => host === domain || host.endsWith("." + domain));
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function isStrongCandidate(el) {
+    return el.matches(STRONG_SELECTORS) || isAdIframe(el);
+  }
 
   function adByName(el) {
+    const tokens = state.replaceMore ? EXACT_TOKENS : CONSERVATIVE_TOKENS;
+    const prefix = state.replaceMore ? PREFIX_RE : CONSERVATIVE_PREFIX_RE;
+    const suffix = state.replaceMore ? SUFFIX_RE : CONSERVATIVE_SUFFIX_RE;
     for (const c of el.classList) {
       const t = c.toLowerCase();
-      if (EXACT_TOKENS.has(t) || PREFIX_RE.test(t) || SUFFIX_RE.test(t)) return true;
+      if (tokens.has(t) || prefix.test(t) || suffix.test(t)) return true;
     }
     const id = (el.id || "").toLowerCase();
-    return EXACT_TOKENS.has(id) || PREFIX_RE.test(id) || SUFFIX_RE.test(id);
+    return tokens.has(id) || prefix.test(id) || suffix.test(id);
   }
 
   function isValidCandidate(el) {
-    if (el.closest("[data-adsart-host]")) return false;
-    if (el.dataset.adsartDone) return false;
+    if (el.closest(`[${HOST_ATTR}]`)) return false;
+    if (el.hasAttribute(PROCESSED_ATTR)) return false;
     // A container whose children were already carded is a handled region.
-    if (el.querySelector("[data-adsart-host], [data-adsart-done]")) return false;
+    if (el.querySelector(`[${HOST_ATTR}], [${PROCESSED_ATTR}]`)) return false;
     if (el.closest("nav, header, footer")) return false;
     if (el.querySelector("form, nav, header")) return false;
-    if ((el.textContent || "").trim().length > MAX_TEXT) return false;
+    const style = getComputedStyle(el);
+    if (style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse") return false;
+    if (Number.parseFloat(style.opacity) === 0 || style.contentVisibility === "hidden") return false;
+    if ((el.textContent || "").trim().length > (state.replaceMore ? 500 : MAX_TEXT)) return false;
     const r = el.getBoundingClientRect();
-    if (r.width < MIN_W || r.height < MIN_H) return false;
-    if (r.height > window.innerHeight * 1.5) return false;
+    const minimumWidth = state.replaceMore ? 90 : MIN_W;
+    const minimumHeight = state.replaceMore ? 45 : MIN_H;
+    if (r.width < minimumWidth || r.height < minimumHeight) return false;
+    if (r.height > window.innerHeight * (state.replaceMore ? 2 : 1.5)) return false;
     return true;
   }
 
@@ -117,21 +213,27 @@ can't load. State lives in chrome.storage so the popup can control it live.
     const candidates = new Set();
 
     try {
-      if (root !== document && root.nodeType === Node.ELEMENT_NODE && adByName(root)) {
-        candidates.add(root); // the injected subtree's own container may be the ad
+      if (root !== document && root.nodeType === Node.ELEMENT_NODE) {
+        if (isStrongCandidate(root)) candidates.add(root);
+        else if (adByName(root)) candidates.add(root);
       }
       root.querySelectorAll(STRONG_SELECTORS).forEach((el) => candidates.add(el));
+      root.querySelectorAll("iframe").forEach((el) => {
+        if (isAdIframe(el)) candidates.add(el);
+      });
       root.querySelectorAll("[id],[class]").forEach((el) => {
-        if (adByName(el)) candidates.add(el);
+        if (isStrongCandidate(el)) candidates.add(el);
+        else if (adByName(el)) candidates.add(el);
       });
     } catch (e) {
       return;
     }
 
-    // Validate first (size/text filters), THEN resolve nesting among the
-    // valid set: a container (e.g. "row-of-ads") yields to its valid child
-    // slots, but wins when its only matches are tiny caption labels that
-    // failed validation ("ad-label" etc.).
+    /* Validate first (size/text filters), THEN resolve nesting among the
+       valid set: a container (e.g. "row-of-ads") yields to its valid child
+       slots, but wins when its only matches are tiny caption labels that
+       failed validation ("ad-label" etc.).
+    */
     const valid = [...candidates].filter((el) => el.isConnected && isValidCandidate(el));
     const chosen = valid.filter((el) => {
       for (const other of valid) {
@@ -140,44 +242,72 @@ can't load. State lives in chrome.storage so the popup can control it live.
       return true;
     });
 
-    let replaced = 0;
     for (const el of chosen) {
       replaceAd(el);
-      replaced++;
     }
   }
 
-  // -- replacement --
+  //  replacement 
   function replaceAd(el) {
-    el.dataset.adsartDone = "1";
+    const art = pick();
+    if (!art) return false;
+    el.setAttribute(PROCESSED_ATTR, "true");
+    const originalDisplay = {
+      value: el.style.getPropertyValue("display"),
+      priority: el.style.getPropertyPriority("display"),
+    };
     const rect = el.getBoundingClientRect();
     const height = Math.max(Math.round(rect.height), MIN_H);
+    const shouldCount = !countedElements.has(el);
 
     const host = document.createElement("div");
-    host.dataset.adsartHost = "1";
+    host.setAttribute(HOST_ATTR, "true");
     host.style.cssText =
       "width:100%;height:" + height + "px;display:block;margin:0;padding:0;border:0;";
 
     const shadow = host.attachShadow({ mode: "closed" });
-    const art = pick();
-    shadow.innerHTML = cardHtml(art);
-    // Counter + museum writes go through the service worker so concurrent
-    // tabs can't clobber each other's read-modify-write cycles.
+    let html;
     try {
-      const p = chrome.runtime.sendMessage({
-        type: "adReplaced",
-        n: 1,
-        art: art.t ? { t: art.t } : null, // quotes don't enter the museum
-      });
-      if (p && p.catch) p.catch(() => {});
-    } catch (e) {
-      /* extension reloaded mid-page — drop the stat */
+      html = cardHtml(art);
+    } catch (error) {
+      el.removeAttribute(PROCESSED_ATTR);
+      return false;
     }
+    shadow.innerHTML = html;
 
     el.parentNode.insertBefore(host, el);
-    el.style.display = "none";
+    const replacement = { host, originalElement: el, originalDisplay, resizeObserver: null, syncing: false };
+    replacements.set(el, replacement);
+    if (typeof ResizeObserver === "function" && el.parentElement) {
+      replacement.resizeObserver = new ResizeObserver(() => syncReplacementHeight(replacement));
+      replacement.resizeObserver.observe(el.parentElement);
+    }
+    el.style.setProperty("display", "none", "important");
+    if (shouldCount) countedElements.add(el);
     window.__adsArtDebug.replaced++;
+    startArtTime();
+    if (shouldCount) {
+      try {
+        const p = chrome.runtime.sendMessage({
+          type: "adReplaced",
+          n: 1,
+          art: art.t && !art.custom ? { t: art.t } : null,
+        });
+        if (p && p.catch) p.catch(() => {});
+      } catch (e) {
+      }
+    }
 
+    const card = shadow.querySelector(".card");
+    if (state.showDetails && !art.custom && art.t) {
+      card.style.cursor = "pointer";
+      card.addEventListener("click", (event) => {
+        if (!event.isTrusted) return;
+        try {
+          chrome.runtime.sendMessage({ type: "openArtwork", title: art.t }, () => void chrome.runtime.lastError);
+        } catch (error) {}
+      });
+    }
     const img = shadow.querySelector("img");
     if (img) {
       img.addEventListener("load", () => {
@@ -190,23 +320,44 @@ can't load. State lives in chrome.storage so the popup can control it live.
         shadow.querySelector(".card").classList.add("plaque");
       });
     }
+    return true;
   }
 
-  // One shuffled queue so a page shows different artworks and never repeats
-  // until the pool is exhausted. The pool respects the selected collection;
-  // "quotes" swaps the whole deck for text-only quote cards. The deck is
-  // rebuilt lazily in pick() so the saved collection is honored whenever it
-  // becomes known (initial load, settings change, etc.).
+  /* One shuffled queue so a page shows different artworks and never repeats
+     until the pool is exhausted. The pool respects the selected collection;
+     quotes swaps the whole deck for text-only quote cards. The deck is
+     rebuilt lazily in pick() so the saved collection is honored whenever it
+     becomes known (initial load, settings change, etc.).
+  */
   let queue = [];
   let queueCollection = null;
+  let quoteCounter = 0;
   function pool() {
     if (state.collection === "quotes") return [];
+    if (state.collection === "custom") {
+      return state.customPhotos.filter((photo) => safeCustomDataUrl(photo.dataUrl)).map((photo) => ({
+        t: photo.name,
+        a: "Your photo",
+        f: "A personal artwork from your Hachi collection.",
+        dataUrl: photo.dataUrl,
+        custom: true,
+      }));
+    }
+    const categories = {
+      classic: ["classic", "renaissance"],
+      modern: ["impression", "vangogh"],
+      nature: ["impression", "space"],
+      photography: ["space"],
+      architecture: ["renaissance", "classic"],
+    };
     if (state.collection === "all" || typeof COLLECTIONS === "undefined") return ARTWORKS;
-    const filtered = ARTWORKS.filter((a) => a.cat === state.collection);
+    const selected = categories[state.collection] || [state.collection];
+    const filtered = ARTWORKS.filter((artwork) => selected.includes(artwork.cat));
     return filtered.length ? filtered : ARTWORKS;
   }
   function pick() {
-    if (state.collection === "quotes") {
+    if (state.collection === "custom" && state.customPhotos.length === 0) return null;
+    if (state.collection !== "custom" && (state.collection === "quotes" || (state.showQuotes && quoteCounter++ % 5 === 4))) {
       if (quoteQueue.length === 0) quoteQueue = shuffle([...QUOTES]);
       return quoteQueue.pop();
     }
@@ -214,7 +365,7 @@ can't load. State lives in chrome.storage so the popup can control it live.
       queue = shuffle([...pool()]);
       queueCollection = state.collection;
     }
-    return queue.pop();
+    return queue.pop() || (state.collection === "custom" ? null : (ARTWORKS[0] || null));
   }
 
   let quoteQueue = shuffle([...(typeof QUOTES !== "undefined" ? QUOTES : [])]);
@@ -232,6 +383,9 @@ can't load. State lives in chrome.storage so the popup can control it live.
     const title = escapeHtml(art.t);
     const artist = escapeHtml(art.a);
     const fact = escapeHtml(art.f);
+    const source = art.custom ? safeCustomDataUrl(art.dataUrl) : artImageUrl(art.file);
+    if (!source) throw new Error("Invalid custom image");
+    const escapedSource = escapeHtml(source);
     const bg = artGradient(art.t);
     return `
       <style>
@@ -274,7 +428,7 @@ can't load. State lives in chrome.storage so the popup can control it live.
         }
       </style>
       <div class="card">
-        <img class="art" loading="lazy" src="${artImageUrl(art.file)}" alt="${title}">
+        <img class="art" loading="lazy" decoding="async" referrerpolicy="no-referrer" src="${escapedSource}" alt="${title}">
         <div class="shade"></div>
         <span class="mark">${WATERMARK}</span>
         <div class="caption">
@@ -322,6 +476,26 @@ can't load. State lives in chrome.storage so the popup can control it live.
       </div>`;
   }
 
+  function safeCustomDataUrl(value) {
+    return typeof value === "string" && /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(value)
+      ? value
+      : null;
+  }
+
+  function normalizeCustomPhotos(value) {
+    if (!Array.isArray(value)) return [];
+    let totalLength = 0;
+    return value
+      .filter((photo) => {
+        const dataUrl = photo && typeof photo === "object" ? safeCustomDataUrl(photo.dataUrl) : null;
+        if (!dataUrl || dataUrl.length > MAX_CUSTOM_PHOTO_LENGTH || totalLength + dataUrl.length > MAX_CUSTOM_PHOTO_TOTAL_LENGTH) return false;
+        totalLength += dataUrl.length;
+        return true;
+      })
+      .slice(0, MAX_CUSTOM_PHOTOS)
+      .map((photo) => ({ name: typeof photo.name === "string" ? photo.name.slice(0, 200) : "Your photo", dataUrl: photo.dataUrl }));
+  }
+
   function escapeHtml(s) {
     return String(s)
       .replace(/&/g, "&amp;")
@@ -330,23 +504,120 @@ can't load. State lives in chrome.storage so the popup can control it live.
       .replace(/"/g, "&quot;");
   }
 
-  // -- restore --
-  function revertAll() {
-    document
-      .querySelectorAll("[data-adsart-host]")
-      .forEach((h) => h.remove());
-    document.querySelectorAll("[data-adsart-done]").forEach((el) => {
-      el.style.display = "";
-      delete el.dataset.adsartDone;
-    });
+  function syncReplacementHeight(replacement) {
+    const el = replacement.originalElement;
+    if (!el || !el.isConnected || replacement.syncing) return;
+    replacement.syncing = true;
+    if (replacement.originalDisplay.value) {
+      el.style.setProperty("display", replacement.originalDisplay.value, replacement.originalDisplay.priority);
+    } else {
+      el.style.removeProperty("display");
+    }
+    const height = Math.round(el.getBoundingClientRect().height);
+    el.style.setProperty("display", "none", "important");
+    replacement.syncing = false;
+    if (height >= MIN_H && replacement.host.style.height !== height + "px") replacement.host.style.height = height + "px";
   }
 
-  // -- scanning loop --
+  let pendingArtSeconds = 0;
+  let visibleArtSince = 0;
+  let artTimeFlushPromise = null;
+  let artTimeFlushAgain = false;
+
+  function hasActiveReplacement() {
+    for (const [el, replacement] of replacements) {
+      if (el.isConnected && replacement.host.isConnected) return true;
+    }
+    return false;
+  }
+
+  function captureArtTime() {
+    if (!visibleArtSince || document.hidden) return;
+    const now = Date.now();
+    pendingArtSeconds += (now - visibleArtSince) / 1000;
+    visibleArtSince = now;
+  }
+
+  function startArtTime() {
+    if (!document.hidden && hasActiveReplacement() && !visibleArtSince) visibleArtSince = Date.now();
+  }
+
+  function stopArtTime() {
+    captureArtTime();
+    visibleArtSince = 0;
+  }
+
+  function flushArtTime(allowInactive = false) {
+    captureArtTime();
+    if (!allowInactive && !hasActiveReplacement()) {
+      visibleArtSince = 0;
+      pendingArtSeconds = 0;
+      return Promise.resolve();
+    }
+    const seconds = Math.min(120, Math.floor(pendingArtSeconds));
+    if (seconds < 1) return Promise.resolve();
+    if (artTimeFlushPromise) {
+      artTimeFlushAgain = true;
+      return artTimeFlushPromise;
+    }
+    artTimeFlushPromise = Promise.resolve()
+      .then(() => chrome.runtime.sendMessage({ type: "artTime", seconds }))
+      .then((response) => {
+        if (response && response.ok === false) throw new Error("Time update failed");
+        pendingArtSeconds = Math.max(0, pendingArtSeconds - seconds);
+      })
+      .catch(() => {})
+      .finally(() => {
+        artTimeFlushPromise = null;
+        if (artTimeFlushAgain) {
+          artTimeFlushAgain = false;
+          flushArtTime(allowInactive);
+        } else if (allowInactive) {
+          pendingArtSeconds = 0;
+        }
+      });
+    return artTimeFlushPromise;
+  }
+
+  function handleArtVisibilityChange() {
+    if (document.hidden) {
+      stopArtTime();
+      flushArtTime(true);
+    } else {
+      startArtTime();
+    }
+  }
+
+  // restore 
+  function revertAll() {
+    stopArtTime();
+    for (const [el, replacement] of replacements) {
+      if (replacement.resizeObserver) replacement.resizeObserver.disconnect();
+      if (replacement.host.isConnected) replacement.host.remove();
+      if (replacement.originalDisplay.value) {
+        el.style.setProperty("display", replacement.originalDisplay.value, replacement.originalDisplay.priority);
+      } else {
+        el.style.removeProperty("display");
+      }
+      el.removeAttribute(PROCESSED_ATTR);
+    }
+    replacements.clear();
+    flushArtTime(true);
+  }
+
+  //  scanning loop 
   let scanTimer = null;
   const pendingRoots = new Set();
 
   function scheduleScan(root) {
-    if (root) pendingRoots.add(root);
+    if (root) {
+      if (pendingRoots.has(document)) return;
+      pendingRoots.add(root);
+      if (pendingRoots.size > MAX_PENDING_ROOTS) {
+        pendingRoots.clear();
+        pendingRoots.add(document);
+      }
+    }
     if (scanTimer) return;
     scanTimer = setTimeout(() => {
       scanTimer = null;
@@ -367,21 +638,64 @@ can't load. State lives in chrome.storage so the popup can control it live.
   const observer = new MutationObserver((mutations) => {
     if (!state.enabled || siteDisabled()) return;
     for (const m of mutations) {
+      if (m.type === "attributes") {
+        const target = m.target;
+        if (target.nodeType !== Node.ELEMENT_NODE) continue;
+        if (target.closest(`[${HOST_ATTR}]`) || target.hasAttribute(PROCESSED_ATTR)) continue;
+        if (isStrongCandidate(target) || adByName(target)) scheduleScan(target);
+        continue;
+      }
       for (const node of m.addedNodes) {
-        if (node.nodeType !== Node.ELEMENT_NODE) continue;
+        if (node.nodeType !== Node.ELEMENT_NODE || node.hasAttribute(HOST_ATTR)) continue;
         scheduleScan(node);
+      }
+      for (const node of m.removedNodes) {
+        if (node.nodeType !== Node.ELEMENT_NODE) continue;
+        if (node.hasAttribute(HOST_ATTR) || node.querySelector(`[${HOST_ATTR}]`)) {
+          for (const [element, replacement] of replacements) {
+            if (!element.isConnected || !replacement.host.isConnected) {
+              if (replacement.resizeObserver) replacement.resizeObserver.disconnect();
+              replacements.delete(element);
+            }
+          }
+          stopArtTime();
+          flushArtTime(true);
+        }
       }
     }
   });
 
   function start() {
+    started = true;
     scan(document);
-    observer.observe(document.documentElement, { childList: true, subtree: true });
-    // Late-loading ads often resize after load; rescan a few times early on.
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class", "id", "style", "src", "data-ad-slot", "data-ad-client", "data-ad-format"],
+    });
     [1200, 3000, 6000].forEach((ms) => setTimeout(() => scheduleScan(document), ms));
+    setInterval(() => {
+      if (document.hidden) return;
+      if (!state.enabled || siteDisabled() || !hasActiveReplacement()) {
+        if (visibleArtSince) {
+          stopArtTime();
+          flushArtTime(true);
+        }
+        return;
+      }
+      startArtTime();
+      flushArtTime();
+    }, 60000);
+    document.addEventListener("visibilitychange", handleArtVisibilityChange);
+    document.addEventListener("pagehide", () => {
+      stopArtTime();
+      flushArtTime(true);
+    });
+    document.addEventListener("pageshow", startArtTime);
   }
 
-  // -- restore --
+  //  restore 
   // Never scan before settings are known — otherwise the first slots get
   // carded with the wrong collection.
   if (document.readyState === "loading") {
