@@ -23,8 +23,11 @@ const STYLE_DEFINITIONS = [
   { id: "nature", label: "Nature", artwork: "Bridge over a Pond of Water Lilies", color: "#e6a56f" },
   { id: "photography", label: "Photography", artwork: "The Blue Marble", color: "#5a7391" },
   { id: "architecture", label: "Architecture", artwork: "The Tower of Babel", color: "#56558a" },
+  { id: "dutch", label: "Dutch Golden Age", artwork: "The Night Watch", color: "#7a5c44" },
+  { id: "american", label: "American Masters", artwork: "Whistler’s Mother", color: "#8a6d3b" },
+  { id: "poster", label: "Travel Posters", artwork: "Jungfrau Railway, Bernese Oberland", color: "#b3862f" },
 ];
-const STYLE_COLORS = ["#d35c3e", "#d77b55", "#e5b579", "#647c9b", "#5a568a"];
+const STYLE_COLORS = ["#d35c3e", "#d77b55", "#e5b579", "#647c9b", "#5a568a", "#7a5c44", "#8a6d3b", "#b3862f"];
 const MAX_PHOTOS = 7;
 const MAX_PHOTO_DATA_LENGTH = 900000;
 const MAX_TOTAL_PHOTO_DATA_LENGTH = 4500000;
@@ -194,6 +197,9 @@ function artStyle(artwork) {
   if (artwork.cat === "vangogh") return "Modern";
   if (artwork.cat === "impression") return "Nature";
   if (artwork.cat === "renaissance") return "Architecture";
+  if (artwork.cat === "dutch") return "Dutch Golden Age";
+  if (artwork.cat === "american") return "American Masters";
+  if (artwork.cat === "poster") return "Travel Posters";
   return "Classics";
 }
 
@@ -735,12 +741,38 @@ async function createWeeklyCard(button) {
   }
 }
 
+/* On an image error, try the offline artwork cache served by the background
+   worker (viewed artworks are stored there); only when that fails does the
+   image degrade to its deterministic gradient. */
+async function useCachedArtwork(image) {
+  const artwork = artByKey(image.alt);
+  if (artwork && !artwork.custom && artwork.file) {
+    try {
+      const response = await chrome.runtime.sendMessage({ type: "artImage", file: artwork.file });
+      if (response && response.ok && typeof response.dataUrl === "string" && response.dataUrl.startsWith("data:image/")) {
+        image.removeAttribute("data-fallback");
+        image.dataset.cachedFallback = "true";
+        image.src = response.dataUrl;
+        return;
+      }
+    } catch (error) {}
+  }
+  image.style.background = artGradient(image.alt || "Hachi artwork");
+  image.removeAttribute("src");
+}
+
 function bindEvents() {
   document.addEventListener("error", (event) => {
-    if (!(event.target instanceof HTMLImageElement) || event.target.dataset.fallback) return;
-    event.target.dataset.fallback = "true";
-    event.target.style.background = artGradient(event.target.alt || "Hachi artwork");
-    event.target.removeAttribute("src");
+    const image = event.target;
+    if (!(image instanceof HTMLImageElement)) return;
+    if (image.dataset.cachedFallback) {
+      image.style.background = artGradient(image.alt || "Hachi artwork");
+      image.removeAttribute("src");
+      return;
+    }
+    if (image.dataset.fallback) return;
+    image.dataset.fallback = "true";
+    useCachedArtwork(image);
   }, true);
   document.querySelectorAll(".nav-item").forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
   document.getElementById("recentViewAll").addEventListener("click", () => setView("gallery"));

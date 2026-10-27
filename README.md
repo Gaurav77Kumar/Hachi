@@ -44,8 +44,9 @@ servers, and no analytics. Artwork images are retrieved from Wikimedia Commons.
 
 ### 🎨 Artwork gallery
 
-- 69 curated artworks plus 16 quote cards
-- Style groups: Classics, Modern, Nature, Photography, and Architecture
+- 100 curated artworks plus 16 quote cards
+- Style groups: Classics, Modern, Nature, Photography, Architecture, Dutch Golden Age, American Masters, and Travel Posters
+- Offline artwork cache: viewed artworks stay available without a network connection
 - Artwork cards include title, artist, year, and a short cultural fact
 - A shuffled artwork deck avoids repeats until its pool is exhausted
 - Artwork detail dialog with the full fact and source link

@@ -20,10 +20,18 @@
     .leaderboard { height: 90px; margin: 0 0 24px; }
     .inline-ad { height: 250px; margin: 24px 0; }
     .grid { display: grid; grid-template-columns: 1fr 300px; gap: 24px; }
-    .sidebar-ad { height: 600px; }
+    .sidebar-ad { height: 300px; }
     .row-of-ads { display: flex; gap: 12px; margin: 24px 0; }
     .ad-box { flex: 1; height: 120px; }
     .ad-label { font-family: sans-serif; font-size: 11px; color: #999; padding: 6px 8px; }
+    /* --- false-positive traps: ordinary site UI with ad-ish names.
+           None of these may ever become art. --- */
+    .site-banner { background: #dfe9f3; border: 1px solid #b9cfe0; padding: 30px 16px; margin: 0 0 24px; font-family: sans-serif; font-size: 14px; }
+    .html5-video-player { background: #111; margin: 24px 0; }
+    .ad-overlay { color: #fff; font-family: sans-serif; font-size: 12px; padding: 8px 12px; }
+    .cookie-banner { background: #fff8e1; border: 1px solid #e0c96b; padding: 16px; margin: 24px 0; font-family: sans-serif; font-size: 14px; }
+    .advert-wrap { background: #f0ede6; border: 1px solid #d8d2c4; padding: 8px 16px 16px; margin: 24px 0; }
+    #tall-suspect { height: 600px; }
   </style>
 </head>
 <body>
@@ -66,16 +74,44 @@
       <div class="ad-box ad"><div class="ad-label">Ad</div></div>
     </div>
 
+    <!-- 5. FALSE-POSITIVE TRAPS — named like ads, but ordinary site UI.
+       Pre-hardening, every one of these got carded (the player covered the
+       page). After the fix none of them may ever become art. -->
+    <div class="site-banner" id="banner">Welcome to The Daily Placid — a subscriber notice, not an ad slot.</div>
+
+    <div class="html5-video-player ad-showing" id="player-shell">
+      <video controls width="640" height="360"></video>
+      <div class="ad-overlay">Ad · 12s</div>
+    </div>
+
+    <div class="cookie-banner" id="consent-banner">
+      We use cookies. By clicking accept you give consent as described in our
+      privacy policy (GDPR). <button type="button">Accept all</button>
+    </div>
+
+    <div class="advert-wrap" id="content-shell">
+      <article>
+        <h2>Editorial content, not an ad</h2>
+        <p>This wrapper borrows an advert-ish class name the way real sites
+        sometimes do. It wraps an article, so Hachi must leave it alone.</p>
+      </article>
+    </div>
+
+    <!-- 6. Tall convention-only slot: taller than half the viewport with no
+       ad-network signature. Pre-hardening this got carded; now the size
+       policy must leave it alone. -->
+    <div class="sidebar-ad" id="tall-suspect">
+      <div class="ad-label">Tall region with an ad-ish name — must stay</div>
+    </div>
+
     <p>If the extension is working, every gray dashed box above is now a
-    painting. Reload to reshuffle the gallery.</p>
+    painting — and every trap between them is untouched. Reload to reshuffle
+    the gallery.</p>
   </div>
 
-  <script>/* honor ?collection=... for theme testing */
-    window.__adsArtCollection = new URLSearchParams(location.search).get("collection") || undefined;
-  </script>
-  <script src="../lib/mock.js?v=1.2"></script>
-  <script src="../lib/artworks.js?v=1.2"></script>
-  <script src="../lib/quotes.js?v=1.2"></script>
-  <script src="../content/art.js?v=1.2c"></script>
+  <script src="../lib/mock.js?v=2.1"></script>
+  <script src="../lib/artworks.js?v=2.1"></script>
+  <script src="../lib/quotes.js?v=2.1"></script>
+  <script src="../content/art.js?v=2.1"></script>
 </body>
 </html>

@@ -3,6 +3,17 @@ importScripts("lib/artworks.js", "lib/museum.js");
 const MUSEUM_MILESTONES_REF = typeof MUSEUM_MILESTONES !== "undefined" ? MUSEUM_MILESTONES : [];
 const ARTWORK_TITLES = new Set(typeof ARTWORKS !== "undefined" ? ARTWORKS.map((artwork) => artwork.t) : []);
 const HISTORY_LIMIT = 120;
+/* Offline artwork cache: the first successful load of an artwork is stored
+   (as a data URL) in the extension-origin Cache API, so cards keep working
+   offline afterwards. Keys are synthetic and only ever matched, never
+   fetched; the index in storage.local caps the cache at ART_CACHE_LIMIT
+   entries by evicting the least recently added. */
+const ART_CACHE_NAME = "hachi-art-v1";
+const ART_CACHE_INDEX_KEY = "artCacheIndex";
+const ART_CACHE_LIMIT = 120;
+const ART_CACHE_MAX_BYTES = 3 * 1024 * 1024;
+const ART_FILE_SET = new Set(typeof ARTWORKS !== "undefined" ? ARTWORKS.map((artwork) => artwork.file) : []);
+const artImageTasks = new Map();
 let stateQueue = Promise.resolve();
 
 function enqueueStateUpdate(task) {
@@ -60,6 +71,88 @@ function pruneHistory(history) {
   return Object.fromEntries(Object.entries(history)
     .sort(([a], [b]) => b.localeCompare(a))
     .slice(0, HISTORY_LIMIT));
+}
+
+function artCacheKey(file) {
+  return `https://hachi-art-cache.local/art/${encodeURIComponent(file)}?w=960`;
+}
+
+async function resolveThumbUrl(file, width) {
+  const api =
+    "https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*" +
+    "&prop=imageinfo&iiprop=url&iiurlwidth=" + width +
+    "&titles=" + encodeURIComponent("File:" + file);
+  const response = await fetch(api);
+  if (!response.ok) throw new Error(`Commons API failed: ${response.status}`);
+  const data = await response.json();
+  const page = data && data.query && data.query.pages ? Object.values(data.query.pages)[0] : null;
+  const thumbUrl = page && page.imageinfo && page.imageinfo[0] ? page.imageinfo[0].thumburl : null;
+  if (!thumbUrl) throw new Error("no thumbnail available");
+  return thumbUrl;
+}
+
+function blobToDataUrl(blob) {
+  return blob.arrayBuffer().then((buffer) => {
+    const bytes = new Uint8Array(buffer);
+    let binary = "";
+    for (let index = 0; index < bytes.length; index += 0x8000) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(index, index + 0x8000));
+    }
+    return `data:${blob.type || "image/jpeg"};base64,${btoa(binary)}`;
+  });
+}
+
+async function rememberArtCacheKey(cache, key) {
+  const stored = await chrome.storage.local.get(ART_CACHE_INDEX_KEY);
+  const index = Array.isArray(stored[ART_CACHE_INDEX_KEY]) ? stored[ART_CACHE_INDEX_KEY].filter((entry) => entry !== key) : [];
+  index.push(key);
+  const evicted = index.length > ART_CACHE_LIMIT ? index.splice(0, index.length - ART_CACHE_LIMIT) : [];
+  await chrome.storage.local.set({ [ART_CACHE_INDEX_KEY]: index });
+  await Promise.all(evicted.map((entry) => cache.delete(entry).catch(() => {})));
+}
+
+async function fetchAndCacheArtwork(file, key) {
+  try {
+    const thumbUrl = await resolveThumbUrl(file, 960);
+    const response = await fetch(thumbUrl);
+    if (!response.ok) throw new Error(`image fetch failed: ${response.status}`);
+    const blob = await response.blob();
+    if (!blob.type.startsWith("image/") || blob.size < 64 || blob.size > ART_CACHE_MAX_BYTES) {
+      throw new Error("unexpected image payload");
+    }
+    const dataUrl = await blobToDataUrl(blob);
+    const cache = await caches.open(ART_CACHE_NAME);
+    await cache.put(key, new Response(dataUrl));
+    await rememberArtCacheKey(cache, key);
+    return { ok: true, dataUrl };
+  } catch (error) {
+    return { ok: false, error: String(error) };
+  }
+}
+
+async function handleArtImage(file) {
+  if (typeof file !== "string" || !ART_FILE_SET.has(file) || file.length > 300) return { ok: false };
+  const key = artCacheKey(file);
+  try {
+    const cache = await caches.open(ART_CACHE_NAME);
+    const hit = await cache.match(key);
+    if (hit) {
+      const dataUrl = await hit.text();
+      if (dataUrl.startsWith("data:image/")) return { ok: true, dataUrl };
+    }
+  } catch (error) {
+    return { ok: false, error: String(error) };
+  }
+  let task = artImageTasks.get(file);
+  if (!task) {
+    task = fetchAndCacheArtwork(file, key);
+    artImageTasks.set(file, task);
+  }
+  try {
+    return await task;
+  } finally {
+    if (artImageTasks.get(file) === task) artImageTasks.delete(file);
+  }
 }
 
 async function handleAdReplaced({ n, art }) {
@@ -122,6 +215,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     handleArtTime(message)
       .then(() => sendResponse({ ok: true }))
       .catch((error) => sendResponse({ ok: false, error: String(error) }));
+    return true;
+  }
+  if (message && message.type === "artImage" && typeof message.file === "string") {
+    handleArtImage(message.file)
+      .then((result) => sendResponse(result))
+      .catch(() => sendResponse({ ok: false }));
     return true;
   }
   if (message && message.type === "openArtwork" && message.title && ARTWORK_TITLES.has(message.title)) {
