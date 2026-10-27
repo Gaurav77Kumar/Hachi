@@ -13,7 +13,16 @@ can't load. State lives in chrome.storage so the popup can control it live.
   const HOST_ATTR = "data-hachi-host";
   const MIN_W = 120;
   const MIN_H = 64;
-  const MAX_TEXT = 300; 
+  const MAX_TEXT = 300;
+  /* Confidence policy: when the page does not give unmistakable evidence
+     that an element is an ad slot, leave it alone. Big regions are only
+     carded with ad-network proof, and content people read or interact with
+     is never carded no matter what it is named. */
+  const MAX_VIEWPORT_SHARE = 0.9;
+  const TALL_SLOT_SHARE = 0.5;
+  const NON_AD_CONTENT_SELECTOR =
+    "video, audio, canvas, button, input, select, textarea, dialog, details, h1, main, article, [role='main'], [contenteditable]";
+  const CONSENT_TEXT_RE = /\b(?:cookies?|consent|gdpr|privacy policy)\b/i;
   const SCAN_DEBOUNCE_MS = 400;
   const MAX_PENDING_ROOTS = 50;
   const MAX_CUSTOM_PHOTOS = 7;
@@ -144,23 +153,28 @@ can't load. State lives in chrome.storage so the popup can control it live.
   ];
 
   // Tier 2: naming conventions (checked token-by-token to avoid false
-  // positives like "address" or "advance").
+  // positives like "address" or "advance"). Generic layout words that sites
+  // attach to non-ads — "banner" (site header, cookie banner),
+  // "leaderboard" (game scoreboard), "billboard", "sidebar" — are never
+  // matched standalone, as a prefix, or as a suffix. A real banner ad still
+  // matches through its ad wording: "banner-ad" (-ad suffix), "ad-banner"
+  // (ad- prefix), "div-gpt-ad-…" (Tier 1).
   const EXACT_TOKENS = new Set([
     "ad", "ads", "adv", "advert", "adverts", "advertisement", "advertisements",
     "adbox", "adslot", "adslots", "adframe", "adunit", "adspace", "adsense",
     "adcontainer", "adwrapper", "advertising", "sidebarad", "bannerad",
-    "leaderboard", "billboard", "sponsorbox", "sponsoredwidget",
-    "dfp", "gpt", "banner", "banners", "sponsor", "sponsored",
+    "sponsorbox", "sponsoredwidget", "sponsor", "sponsored",
+    "dfp", "gpt",
   ]);
   const CONSERVATIVE_TOKENS = new Set([
     "ad", "ads", "adv", "advert", "adverts", "advertisement", "advertisements",
     "adbox", "adslot", "adslots", "adframe", "adunit", "adspace", "adsense",
     "adcontainer", "adwrapper", "advertising", "sidebarad", "bannerad",
-    "leaderboard", "billboard", "sponsorbox", "sponsoredwidget", "dfp", "gpt",
+    "sponsorbox", "sponsoredwidget", "dfp", "gpt",
   ]);
-  const PREFIX_RE = /^(ad|ads|adv|advert|advertisement|adbox|adslot|adunit|adspace|adcontainer|adwrapper|sidebar|banner|leaderboard|billboard|dfp|gpt|sponsor|sponsored)[-_]/;
+  const PREFIX_RE = /^(ad|ads|adv|advert|advertisement|adbox|adslot|adunit|adspace|adcontainer|adwrapper|dfp|gpt|sponsor|sponsored)[-_]/;
   const CONSERVATIVE_PREFIX_RE = /^(ad|ads|adv|advert|advertisement|adbox|adslot|adunit|adspace|adcontainer|adwrapper|dfp|gpt)[-_]/;
-  const SUFFIX_RE = /[-_](ad|ads|advert|advertisement|adslot|adunit|banner)$/;
+  const SUFFIX_RE = /[-_](ad|ads|advert|advertisement|adslot|adunit)$/;
   const CONSERVATIVE_SUFFIX_RE = /[-_](ad|ads|advert|advertisement|adslot|adunit)$/;
 
   function isAdIframe(el) {
@@ -195,16 +209,29 @@ can't load. State lives in chrome.storage so the popup can control it live.
     // A container whose children were already carded is a handled region.
     if (el.querySelector(`[${HOST_ATTR}], [${PROCESSED_ATTR}]`)) return false;
     if (el.closest("nav, header, footer")) return false;
-    if (el.querySelector("form, nav, header")) return false;
+    // Regions people read or interact with — content wrappers, media
+    // players, modals, consent overlays — are never carded, however named.
+    if (el.closest("dialog, [role='dialog'], [aria-modal='true']")) return false;
+    if (el.closest("video, audio, [class*='player' i], [id*='player' i]")) return false;
+    if (el.querySelector(NON_AD_CONTENT_SELECTOR)) return false;
     const style = getComputedStyle(el);
     if (style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse") return false;
+    if (style.position === "fixed" || style.position === "sticky") return false;
     if (Number.parseFloat(style.opacity) === 0 || style.contentVisibility === "hidden") return false;
-    if ((el.textContent || "").trim().length > (state.replaceMore ? 500 : MAX_TEXT)) return false;
+    const text = (el.textContent || "").trim();
+    if (text.length > (state.replaceMore ? 500 : MAX_TEXT)) return false;
+    const strong = isStrongCandidate(el);
+    if (!strong && CONSENT_TEXT_RE.test(text.slice(0, 600))) return false;
     const r = el.getBoundingClientRect();
     const minimumWidth = state.replaceMore ? 90 : MIN_W;
     const minimumHeight = state.replaceMore ? 45 : MIN_H;
     if (r.width < minimumWidth || r.height < minimumHeight) return false;
-    if (r.height > window.innerHeight * (state.replaceMore ? 2 : 1.5)) return false;
+    // A slot taller than half the viewport must carry an ad-network
+    // signature (Tier 1) — a name alone is not enough, since players and
+    // layout regions borrow ad-like class names. Nothing near full-screen
+    // is ever carded.
+    if (r.height > window.innerHeight * MAX_VIEWPORT_SHARE) return false;
+    if (r.height > window.innerHeight * TALL_SLOT_SHARE && !strong) return false;
     return true;
   }
 
@@ -319,6 +346,7 @@ can't load. State lives in chrome.storage so the popup can control it live.
         img.remove();
         shadow.querySelector(".card").classList.add("plaque");
       });
+      if (!art.custom && art.file) loadCardImage(img, art.file);
     }
     return true;
   }
@@ -349,6 +377,9 @@ can't load. State lives in chrome.storage so the popup can control it live.
       nature: ["impression", "space"],
       photography: ["space"],
       architecture: ["renaissance", "classic"],
+      dutch: ["dutch"],
+      american: ["american"],
+      poster: ["poster"],
     };
     if (state.collection === "all" || typeof COLLECTIONS === "undefined") return ARTWORKS;
     const selected = categories[state.collection] || [state.collection];
@@ -383,8 +414,8 @@ can't load. State lives in chrome.storage so the popup can control it live.
     const title = escapeHtml(art.t);
     const artist = escapeHtml(art.a);
     const fact = escapeHtml(art.f);
-    const source = art.custom ? safeCustomDataUrl(art.dataUrl) : artImageUrl(art.file);
-    if (!source) throw new Error("Invalid custom image");
+    const source = art.custom ? safeCustomDataUrl(art.dataUrl) : "";
+    if (art.custom && !source) throw new Error("Invalid custom image");
     const escapedSource = escapeHtml(source);
     const bg = artGradient(art.t);
     return `
@@ -428,7 +459,7 @@ can't load. State lives in chrome.storage so the popup can control it live.
         }
       </style>
       <div class="card">
-        <img class="art" loading="lazy" decoding="async" referrerpolicy="no-referrer" src="${escapedSource}" alt="${title}">
+        <img class="art" loading="lazy" decoding="async" ${escapedSource ? `src="${escapedSource}" referrerpolicy="no-referrer"` : ""} alt="${title}">
         <div class="shade"></div>
         <span class="mark">${WATERMARK}</span>
         <div class="caption">
@@ -437,6 +468,23 @@ can't load. State lives in chrome.storage so the popup can control it live.
           <div class="fact">${fact}</div>
         </div>
       </div>`;
+  }
+
+  /* Artwork images load through the background worker so every successfully
+     viewed artwork lands in the offline cache. If the worker is unreachable
+     the card falls back to the direct URL, whose failure yields the plaque. */
+  function loadCardImage(img, file) {
+    (async () => {
+      let source = null;
+      try {
+        const response = await chrome.runtime.sendMessage({ type: "artImage", file });
+        if (response && response.ok && typeof response.dataUrl === "string" && response.dataUrl.startsWith("data:image/")) {
+          source = response.dataUrl;
+        }
+      } catch (error) {}
+      if (!img.isConnected) return;
+      img.src = source || artImageUrl(file);
+    })();
   }
 
   function quoteCardHtml(quote) {
@@ -516,7 +564,7 @@ can't load. State lives in chrome.storage so the popup can control it live.
     const height = Math.round(el.getBoundingClientRect().height);
     el.style.setProperty("display", "none", "important");
     replacement.syncing = false;
-    if (height >= MIN_H && replacement.host.style.height !== height + "px") replacement.host.style.height = height + "px";
+    if (height >= MIN_H && height <= window.innerHeight * MAX_VIEWPORT_SHARE && replacement.host.style.height !== height + "px") replacement.host.style.height = height + "px";
   }
 
   let pendingArtSeconds = 0;
