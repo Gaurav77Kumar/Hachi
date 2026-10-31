@@ -43,6 +43,10 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+/* The reset above also strips the browser's `margin: auto` from <dialog>,
+   which pinned dialogs to the top-left whenever the page is wider than the
+   400px popup (e.g. artwork deep links opened in a tab or window). */
+dialog { margin: auto; }
 button, input, select { font: inherit; }
 button { color: inherit; }
 button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -61,6 +65,8 @@ body {
 
 svg { display: block; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
 button { border: 0; cursor: pointer; }
+
+.app-shell { display: flex; flex-direction: column; width: 100%; height: 100%; background: var(--surface); }
 
 .app-header {
   position: relative;
@@ -153,11 +159,14 @@ select { min-width: 142px; height: 39px; padding: 0 34px 0 13px; border: 1px sol
 .story-copy { max-width: 390px; margin-top: 14px; padding: 12px 14px; border-left: 3px solid var(--accent); background: var(--panel-soft); color: var(--ink-soft); font-size: 11px; line-height: 1.55; }
 
 .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 15px; }
-.stat-card { min-width: 0; gap: 14px; min-height: 100px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 13px; background: var(--panel); box-shadow: 0 3px 12px rgba(50, 42, 30, 0.03); }
+/* Icon beside a 25px number does not fit three-across at popup width — the
+   number overflows the card. Stack icon over number instead. */
+.stat-card { flex-direction: column; align-items: flex-start; min-width: 0; gap: 8px; min-height: 96px; padding: 14px 12px; border: 1px solid var(--line); border-radius: 13px; background: var(--panel); box-shadow: 0 3px 12px rgba(50, 42, 30, 0.03); }
+.stat-card > div:not(.stat-icon) { min-width: 0; }
 .stat-icon { display: grid; width: 41px; height: 41px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: var(--accent-soft); color: var(--accent-dark); font-size: 20px; }
 .stat-icon.palette-icon { font-size: 14px; }
-.stat-card strong { display: block; font-family: Georgia, "Times New Roman", serif; font-size: 25px; line-height: 1; }
-.stat-card span { display: block; margin-top: 7px; color: var(--muted); font-size: 10px; line-height: 1.25; }
+.stat-card strong { display: block; overflow: hidden; max-width: 100%; font-family: Georgia, "Times New Roman", serif; font-size: 21px; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+.stat-card span { display: block; margin-top: 6px; color: var(--muted); font-size: 10px; line-height: 1.25; }
 
 .panel { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
 .panel-heading { justify-content: space-between; gap: 16px; }
@@ -389,6 +398,31 @@ select { min-width: 142px; height: 39px; padding: 0 34px 0 13px; border: 1px sol
   .dialog-actions { align-items: stretch; flex-direction: column; }
   .small-dialog { width: calc(100vw - 24px); }
   .small-dialog form { flex-direction: column; }
+}
+
+/* Full-tab and artwork-window presentation: popup.html is laid out for the
+   400px toolbar popup, but artwork deep links open it in a larger window or
+   tab. Center the app as a framed museum column instead of hugging the
+   top-left corner. */
+@media (min-width: 480px) {
+  body {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+    padding: 22px 0;
+    background: var(--surface-deep);
+  }
+  .app-shell {
+    width: min(744px, calc(100% - 32px));
+    height: calc(100vh - 44px);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  #mainContent { height: calc(100% - 144px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
