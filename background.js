@@ -225,7 +225,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   if (message && message.type === "openArtwork" && message.title && ARTWORK_TITLES.has(message.title)) {
     const url = `${chrome.runtime.getURL("popup/popup.html")}?art=${encodeURIComponent(message.title)}`;
-    chrome.tabs.create({ url, active: true })
+    /* A small popup window shows the artwork dialog at its designed size; a
+       full browser tab stretches the 400px popup layout across the screen. */
+    chrome.windows.create({ url, type: "popup", width: 520, height: 760, focused: true })
       .then(() => sendResponse({ ok: true }))
       .catch((error) => sendResponse({ ok: false, error: String(error) }));
     return true;
