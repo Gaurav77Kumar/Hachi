@@ -45,6 +45,7 @@ can't load. State lives in chrome.storage so the popup can control it live.
   const countedElements = new WeakSet();
   const changedSettings = new Set();
   let started = false;
+  let pagePaused = false;
   let currentSite = location.hostname.replace(/^www\./, "");
 
   function siteDisabled() {
@@ -236,7 +237,7 @@ can't load. State lives in chrome.storage so the popup can control it live.
   }
 
   function scan(root) {
-    if (!state.enabled || siteDisabled()) return;
+    if (pagePaused || !state.enabled || siteDisabled()) return;
     const candidates = new Set();
 
     try {
@@ -275,7 +276,9 @@ can't load. State lives in chrome.storage so the popup can control it live.
   }
 
   //  replacement 
-  function replaceAd(el) {
+  /* options.counted: false replaces silently — no stats, no discovery —
+     used by the right-click picker, where the user curates deliberately. */
+  function replaceAd(el, options = {}) {
     const art = pick();
     if (!art) return false;
     el.setAttribute(PROCESSED_ATTR, "true");
@@ -285,7 +288,7 @@ can't load. State lives in chrome.storage so the popup can control it live.
     };
     const rect = el.getBoundingClientRect();
     const height = Math.max(Math.round(rect.height), MIN_H);
-    const shouldCount = !countedElements.has(el);
+    const shouldCount = options.counted !== false && !countedElements.has(el);
 
     const host = document.createElement("div");
     host.setAttribute(HOST_ATTR, "true");
@@ -684,7 +687,7 @@ can't load. State lives in chrome.storage so the popup can control it live.
   }
 
   const observer = new MutationObserver((mutations) => {
-    if (!state.enabled || siteDisabled()) return;
+    if (pagePaused || !state.enabled || siteDisabled()) return;
     for (const m of mutations) {
       if (m.type === "attributes") {
         const target = m.target;
@@ -742,6 +745,111 @@ can't load. State lives in chrome.storage so the popup can control it live.
     });
     document.addEventListener("pageshow", startArtTime);
   }
+
+  //  right-click picker 
+  /* The detector fails closed by design; the context-menu picker hands the
+     decision to the user instead. Hachi outlines whatever the mouse is over
+     and the next click becomes an artwork card (not counted in statistics). */
+  let pickerActive = false;
+  let pickerBox = null;
+  let pickerNote = null;
+
+  function pickerEnsure() {
+    if (pickerBox) return;
+    pickerBox = document.createElement("div");
+    pickerBox.setAttribute("data-hachi-picker-box", "");
+    pickerBox.style.cssText =
+      "position:fixed;z-index:2147483646;pointer-events:none;display:none;border:2px dashed #d3914e;background:rgba(211,145,78,0.14);border-radius:4px;";
+    pickerNote = document.createElement("div");
+    pickerNote.setAttribute("data-hachi-picker-box", "");
+    pickerNote.style.cssText =
+      "position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:2147483647;pointer-events:none;display:none;padding:9px 16px;border-radius:999px;background:rgba(23,32,31,0.92);color:#fff;font:12px/1.4 -apple-system,'Segoe UI',Roboto,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,0.35);";
+    document.body.appendChild(pickerBox);
+    document.body.appendChild(pickerNote);
+  }
+
+  function pickerTargetAt(event) {
+    const el = document.elementFromPoint(event.clientX, event.clientY);
+    if (!el || el.closest("[data-hachi-picker-box]")) return null;
+    return el;
+  }
+
+  function pickerMove(event) {
+    const el = pickerTargetAt(event);
+    if (!el) {
+      pickerBox.style.display = "none";
+      return;
+    }
+    const r = el.getBoundingClientRect();
+    pickerBox.style.display = "block";
+    pickerBox.style.left = r.left + "px";
+    pickerBox.style.top = r.top + "px";
+    pickerBox.style.width = r.width + "px";
+    pickerBox.style.height = r.height + "px";
+  }
+
+  function pickerClick(event) {
+    const el = pickerTargetAt(event);
+    if (!el) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (el === document.documentElement || el === document.body || el.closest(`[${HOST_ATTR}]`)) {
+      pickerNote.textContent = "Pick something smaller than the whole page";
+      return;
+    }
+    exitPicker();
+    replaceAd(el, { counted: false });
+  }
+
+  function pickerKey(event) {
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      exitPicker();
+    }
+  }
+
+  function enterPicker() {
+    if (pickerActive || !document.body) return;
+    pickerActive = true;
+    pickerEnsure();
+    pickerNote.textContent = "Click an element to turn it into art — Esc to cancel";
+    pickerNote.style.display = "block";
+    document.addEventListener("mousemove", pickerMove, true);
+    document.addEventListener("click", pickerClick, true);
+    document.addEventListener("keydown", pickerKey, true);
+  }
+
+  function exitPicker() {
+    if (!pickerActive) return;
+    pickerActive = false;
+    pickerBox.style.display = "none";
+    pickerNote.style.display = "none";
+    document.removeEventListener("mousemove", pickerMove, true);
+    document.removeEventListener("click", pickerClick, true);
+    document.removeEventListener("keydown", pickerKey, true);
+  }
+
+  /* Restore clears every Hachi card on this page and pauses replacement
+     until the next navigation (per-site disables are the persistent way). */
+  function restorePage() {
+    exitPicker();
+    pagePaused = true;
+    revertAll();
+  }
+
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message && message.type === "enterPicker") {
+      enterPicker();
+      sendResponse({ ok: true });
+      return false;
+    }
+    if (message && message.type === "restorePage") {
+      restorePage();
+      sendResponse({ ok: true });
+      return false;
+    }
+    return false;
+  });
 
   //  restore 
   // Never scan before settings are known — otherwise the first slots get

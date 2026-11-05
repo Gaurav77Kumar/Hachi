@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<!-- The New Tab Museum: every new tab becomes today's artwork plus a quiet
+     summary of the gallery. Wired up via chrome_url_overrides in the manifest. -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hachi — New Tab</title>
+  <link rel="stylesheet" href="newtab.css" />
+</head>
+<body>
+  <div class="hero" id="hero">
+    <img id="heroImage" referrerpolicy="no-referrer" decoding="async" alt="" />
+    <div class="hero-shade"></div>
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark"><img src="../icons/icon128.png" alt="" /></span>Hachi</div>
+      <div class="date" id="todayDate"></div>
+    </header>
+    <div class="hero-copy">
+      <div class="eyebrow" id="heroEyebrow">Today’s artwork</div>
+      <h1 id="heroTitle"></h1>
+      <p class="artist" id="heroArtist"></p>
+      <p class="line" id="heroLine"></p>
+      <div class="hero-actions">
+        <button class="pill primary" id="heroSource" type="button">View source ↗</button>
+        <button class="pill" id="heroDetails" type="button">Open in Hachi</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="dock">
+    <div class="dock-stats" aria-label="Hachi statistics">
+      <div class="dock-stat"><strong id="statAds">0</strong><span>ads → art today</span></div>
+      <div class="dock-stat"><strong id="statTime">0m</strong><span>time with art</span></div>
+      <div class="dock-stat"><strong id="statSeen">0</strong><span>works discovered</span></div>
+    </div>
+    <div class="dock-divider"></div>
+    <div class="dock-chips" id="collectionChips" role="group" aria-label="Art style"></div>
+    <div class="dock-divider"></div>
+    <button class="pill" id="openHachi" type="button">Dashboard</button>
+  </div>
+
+  <script src="../lib/mock.js"></script>
+  <script src="../lib/artworks.js"></script>
+  <script src="../lib/quotes.js"></script>
+  <script src="newtab.js"></script>
+</body>
+</html>

@@ -40,6 +40,7 @@ extension settings to Wikimedia.
 | HTTP/HTTPS page access | The content script inspects ordinary web pages for likely ad slots and inserts artwork cards. |
 | `storage` | Keeps settings, favorites, collections, photos, and local activity statistics on your device. |
 | `activeTab` | Lets the popup identify the current site for the per-site disable control. |
+| `contextMenus` | Adds the user-invoked "Replace something with art" and "Restore this page" actions to the right-click menu. Nothing is read or changed until you choose one of them. |
 
 ## Data removal
 

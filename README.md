@@ -42,6 +42,18 @@ servers, and no analytics. Artwork images are retrieved from Wikimedia Commons.
 
 ## Features
 
+### 🖼 New Tab Museum
+
+- Every new tab becomes today's featured artwork with a quiet dock: ads-replaced
+  counter, time with art, discoveries, and a one-click style switcher
+- Heroes load through the offline cache, so the gallery works without a network
+
+### 🎯 Right-click curation
+
+- **"Replace something with art"** — right-click any page, pick an element, and
+  it becomes an artwork card (for the spots the conservative detector leaves alone)
+- **"Restore this page"** — clear every Hachi card on the page until the next visit
+
 ### 🎨 Artwork gallery
 
 - 100 curated artworks plus 16 quote cards
