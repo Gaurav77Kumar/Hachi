@@ -16,6 +16,9 @@ RUNTIME_FILES = (
     "popup/popup.html",
     "popup/popup.css",
     "popup/popup.js",
+    "newtab/newtab.html",
+    "newtab/newtab.css",
+    "newtab/newtab.js",
     "lib/artworks.js",
     "lib/quotes.js",
     "lib/museum.js",
@@ -26,6 +29,7 @@ RUNTIME_FILES = (
     "icons/icon128.png",
 )
 MOCK_SCRIPT_RE = re.compile(r"\s*<script\s+src=[\"']\.\./lib/mock\.js(?:\?[^\"']*)?[\"']\s*></script>\s*")
+MOCKED_PAGES = ("popup/popup.html", "newtab/newtab.html")
 
 
 def build():
@@ -43,12 +47,13 @@ def build():
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, destination)
 
-        popup_path = staging / "popup/popup.html"
-        popup_text = popup_path.read_text(encoding="utf-8")
-        cleaned_popup, removed = MOCK_SCRIPT_RE.subn("", popup_text)
-        if removed != 1:
-            raise ValueError("packaging expected exactly one development mock script")
-        popup_path.write_text(cleaned_popup, encoding="utf-8")
+        for page_relative in MOCKED_PAGES:
+            page_path = staging / page_relative
+            page_text = page_path.read_text(encoding="utf-8")
+            cleaned_page, removed = MOCK_SCRIPT_RE.subn("", page_text)
+            if removed != 1:
+                raise ValueError(f"packaging expected exactly one development mock script in {page_relative}")
+            page_path.write_text(cleaned_page, encoding="utf-8")
 
         temporary_zip = temporary_root / out_zip.name
         with zipfile.ZipFile(temporary_zip, "w", zipfile.ZIP_DEFLATED) as archive:

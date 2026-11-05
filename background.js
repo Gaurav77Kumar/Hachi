@@ -234,3 +234,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   return false;
 });
+
+//  context menu 
+/* The conservative detector rightly leaves uncertain elements alone; the
+   context menu hands that decision to the user on any page. */
+function ensureContextMenus() {
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({ id: "hachi-replace", title: "Hachi: replace something with art", contexts: ["all"] });
+    chrome.contextMenus.create({ id: "hachi-restore", title: "Hachi: restore this page", contexts: ["all"] });
+  });
+}
+
+chrome.runtime.onInstalled.addListener(ensureContextMenus);
+chrome.runtime.onStartup.addListener(ensureContextMenus);
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (!tab || typeof tab.id !== "number") return;
+  const type = info.menuItemId === "hachi-replace" ? "enterPicker" : info.menuItemId === "hachi-restore" ? "restorePage" : null;
+  if (!type) return;
+  const pending = chrome.tabs.sendMessage(tab.id, { type });
+  if (pending && pending.catch) pending.catch(() => {});
+});
