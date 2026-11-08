@@ -28,11 +28,30 @@
     </div>
   </div>
 
+  <div class="game-card" id="gameCard">
+    <div class="game-head">
+      <div>
+        <div class="game-eyebrow">The Daily Detail</div>
+        <div class="game-title" id="gameTitle">Guess today’s mystery artwork</div>
+      </div>
+      <div class="game-streak" id="gameStreak" title="Current streak">🔥 0</div>
+    </div>
+    <div class="game-crop" id="gameCrop"><img id="gameImage" referrerpolicy="no-referrer" decoding="async" alt="" /></div>
+    <div class="game-options" id="gameOptions"></div>
+    <div class="game-reveal" id="gameReveal" hidden>
+      <div class="game-reveal-title" id="gameRevealTitle"></div>
+      <div class="game-reveal-artist" id="gameRevealArtist"></div>
+      <div class="game-reveal-line" id="gameRevealLine"></div>
+      <div class="game-actions"><button class="pill" id="gameShare" type="button">Copy result</button></div>
+    </div>
+  </div>
+
   <div class="dock">
     <div class="dock-stats" aria-label="Hachi statistics">
       <div class="dock-stat"><strong id="statAds">0</strong><span>ads → art today</span></div>
       <div class="dock-stat"><strong id="statTime">0m</strong><span>time with art</span></div>
       <div class="dock-stat"><strong id="statSeen">0</strong><span>works discovered</span></div>
+      <div class="dock-stat"><strong id="statMuseums">0</strong><span>museums visited</span></div>
     </div>
     <div class="dock-divider"></div>
     <div class="dock-chips" id="collectionChips" role="group" aria-label="Art style"></div>

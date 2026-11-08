@@ -45,8 +45,18 @@ servers, and no analytics. Artwork images are retrieved from Wikimedia Commons.
 ### 🖼 New Tab Museum
 
 - Every new tab becomes today's featured artwork with a quiet dock: ads-replaced
-  counter, time with art, discoveries, and a one-click style switcher
+  counter, time with art, discoveries, museums visited, and a one-click style
+  switcher
+- **The Daily Detail** — guess today's mystery artwork from a single cropped
+  fragment; keep a streak, share the result
 - Heroes load through the offline cache, so the gallery works without a network
+
+### 🛂 Museum Passport
+
+- Every artwork is tied to the museum that holds it — 39 institutions, from the
+  Rijksmuseum to the Library of Congress to the White House
+- Meeting an artwork stamps its passport; view locked vs. earned stamps in the
+  popup and export a shareable passport card
 
 ### 🎯 Right-click curation
 
@@ -56,7 +66,7 @@ servers, and no analytics. Artwork images are retrieved from Wikimedia Commons.
 
 ### 🎨 Artwork gallery
 
-- 100 curated artworks plus 16 quote cards
+- 99 curated artworks plus 16 quote cards
 - Style groups: Classics, Modern, Nature, Photography, Architecture, Dutch Golden Age, American Masters, and Travel Posters
 - Offline artwork cache: viewed artworks stay available without a network connection
 - Artwork cards include title, artist, year, and a short cultural fact

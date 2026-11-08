@@ -155,6 +155,17 @@ async function handleArtImage(file) {
   }
 }
 
+/* Records a discovery into the shared museum books: first-seen date,
+   latest encounter, curator milestones. Mutates the passed objects. */
+function recordEncounter(seen, encounters, milestones, title, day) {
+  seen[title] = seen[title] || day;
+  encounters[title] = day;
+  const seenCount = Object.keys(seen).length;
+  for (const milestone of MUSEUM_MILESTONES_REF) {
+    if (seenCount >= milestone.n && !milestones[milestone.n]) milestones[milestone.n] = day;
+  }
+}
+
 async function handleAdReplaced({ n, art }) {
   const added = Number.isSafeInteger(n) && n > 0 ? n : 1;
   const title = art && typeof art.t === "string" && ARTWORK_TITLES.has(art.t) ? art.t : null;
@@ -171,17 +182,29 @@ async function handleAdReplaced({ n, art }) {
     stats.history = pruneHistory(stats.history);
     const updates = { stats };
     if (title) {
-      seen[title] = seen[title] || day;
-      encounters[title] = day;
-      const seenCount = Object.keys(seen).length;
-      for (const milestone of MUSEUM_MILESTONES_REF) {
-        if (seenCount >= milestone.n && !milestones[milestone.n]) milestones[milestone.n] = day;
-      }
+      recordEncounter(seen, encounters, milestones, title, day);
       updates.seen = seen;
       updates.encounters = encounters;
       updates.milestones = milestones;
     }
     await chrome.storage.local.set(updates);
+  });
+}
+
+/* Discovery without replacement — the Daily Detail reveal. Records the
+   encounter (passport stamp) but deliberately does not touch the
+   ads-replaced statistics. */
+async function handleArtEncountered({ title }) {
+  if (typeof title !== "string" || !ARTWORK_TITLES.has(title)) return { ok: false };
+  return enqueueStateUpdate(async () => {
+    const day = localDateKey();
+    const stored = await chrome.storage.local.get(["seen", "encounters", "milestones"]);
+    const seen = stored.seen && typeof stored.seen === "object" ? stored.seen : {};
+    const encounters = stored.encounters && typeof stored.encounters === "object" ? stored.encounters : {};
+    const milestones = stored.milestones && typeof stored.milestones === "object" ? stored.milestones : {};
+    recordEncounter(seen, encounters, milestones, title, day);
+    await chrome.storage.local.set({ seen, encounters, milestones });
+    return { ok: true };
   });
 }
 
@@ -215,6 +238,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     handleArtTime(message)
       .then(() => sendResponse({ ok: true }))
       .catch((error) => sendResponse({ ok: false, error: String(error) }));
+    return true;
+  }
+  if (message && message.type === "artEncountered") {
+    handleArtEncountered(message)
+      .then((result) => sendResponse(result))
+      .catch(() => sendResponse({ ok: false }));
     return true;
   }
   if (message && message.type === "artImage" && typeof message.file === "string") {

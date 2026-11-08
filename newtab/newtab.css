@@ -41,7 +41,7 @@ body {
 .pill.primary { border-color: #ad6b2c; background: #ad6b2c; }
 .pill.primary:hover { background: #bd7a38; }
 
-.dock { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px; max-width: min(94vw, 980px); padding: 12px 18px; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 16px; background: rgba(12, 16, 21, 0.62); backdrop-filter: blur(14px); }
+.dock { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px; max-width: min(94vw, 1040px); padding: 12px 18px; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 16px; background: rgba(12, 16, 21, 0.62); backdrop-filter: blur(14px); }
 :root[data-theme="dark"] .dock { background: rgba(8, 10, 13, 0.74); }
 .dock-stats { display: flex; gap: 22px; }
 .dock-stat { text-align: center; }
@@ -57,4 +57,24 @@ body {
   .hero-copy { right: 20px; bottom: 158px; }
   .dock-divider { display: none; }
   .topbar { padding: 16px 20px; }
+  .game-card { top: 76px; right: 16px; left: auto; width: 240px; }
 }
+
+/* The Daily Detail — one fragment, four guesses, a streak worth keeping. */
+.game-card { position: fixed; top: 88px; right: 28px; z-index: 5; width: 300px; padding: 16px; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 16px; background: rgba(12, 16, 21, 0.62); backdrop-filter: blur(14px); }
+.game-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.game-eyebrow { color: #e8c896; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
+.game-title { margin-top: 5px; font-family: Georgia, "Times New Roman", serif; font-size: 14.5px; line-height: 1.3; }
+.game-streak { flex: 0 0 auto; padding: 5px 11px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); font-size: 12px; }
+.game-crop { aspect-ratio: 1.35; margin: 12px 0; overflow: hidden; border-radius: 10px; background: #1c2430; }
+.game-crop img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.5s ease, object-position 0.6s ease; }
+.game-crop img.show { opacity: 1; }
+.game-options { display: grid; gap: 8px; }
+.game-option { padding: 10px 12px; border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 10px; background: rgba(255, 255, 255, 0.06); color: #fff; font-size: 12.5px; text-align: left; }
+.game-option:hover { border-color: rgba(255, 255, 255, 0.55); background: rgba(255, 255, 255, 0.12); }
+.game-option.correct { border-color: #4c9b6f; background: rgba(46, 125, 79, 0.55); }
+.game-option.wrong { border-color: rgba(185, 77, 67, 0.8); background: rgba(139, 48, 48, 0.45); opacity: 0.85; }
+.game-reveal-title { font-family: Georgia, "Times New Roman", serif; font-size: 17px; }
+.game-reveal-artist { margin-top: 4px; color: rgba(255, 255, 255, 0.78); font-size: 12px; }
+.game-reveal-line { margin-top: 9px; color: rgba(255, 255, 255, 0.85); font-family: Georgia, "Times New Roman", serif; font-style: italic; font-size: 12px; line-height: 1.45; }
+.game-actions { margin-top: 12px; }

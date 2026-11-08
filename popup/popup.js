@@ -270,6 +270,7 @@ function render() {
   renderHome();
   renderGallery();
   renderStats();
+  renderPassport();
   renderStyleChoices();
   renderPhotos();
   renderSiteControls();
@@ -512,6 +513,63 @@ function renderSiteControls() {
   button.classList.toggle("disabled-site", Boolean(isDisabled));
   button.textContent = isDisabled ? `Enable on ${currentSite || "this site"}` : `Disable on ${currentSite || "this site"}`;
   button.disabled = !currentSite;
+}
+
+/* --- Museum Passport ---------------------------------------------------
+   Stamps derive straight from `seen` (title → museum), so there is no new
+   storage and nothing to migrate: meeting an artwork stamps its museum. */
+function passportStamps() {
+  const seenTitles = Object.keys(appState.seen);
+  const worksSeen = seenTitles.filter((title) => artworkMuseum(title)).length;
+  const visited = new Map();
+  for (const title of seenTitles) {
+    const museum = artworkMuseum(title);
+    if (!museum) continue;
+    const entry = visited.get(museum) || { museum, works: 0, first: appState.seen[title] };
+    entry.works += 1;
+    if (appState.seen[title] < entry.first) entry.first = appState.seen[title];
+    visited.set(museum, entry);
+  }
+  const all = [...new Set(Object.keys(ARTWORK_MUSEUMS).map((title) => ARTWORK_MUSEUMS[title]))];
+  return {
+    visited: all.filter((museum) => visited.has(museum)).map((museum) => visited.get(museum)),
+    total: all.length,
+    worksSeen,
+  };
+}
+
+function renderPassport() {
+  const stamps = passportStamps();
+  document.getElementById("passportProgress").textContent =
+    `${stamps.visited.length} of ${stamps.total} museums · ${stamps.worksSeen} works met`;
+  const locked = [...new Set(Object.keys(ARTWORK_MUSEUMS).map((title) => ARTWORK_MUSEUMS[title]))]
+    .filter((museum) => !stamps.visited.some((stamp) => stamp.museum === museum));
+  const grid = document.getElementById("passportGrid");
+  grid.innerHTML = [...stamps.visited, ...locked.map((museum) => ({ museum, locked: true }))]
+    .map((stamp) => {
+      const name = stamp.museum.split(",")[0];
+      const city = stamp.museum.includes(", ") ? stamp.museum.slice(stamp.museum.indexOf(", ") + 2) : "";
+      const meta = stamp.locked ? "Not yet visited" : `${city ? city + " · " : ""}${stamp.works} work${stamp.works === 1 ? "" : "s"}`;
+      return `<div class="passport-stamp ${stamp.locked ? "locked" : "earned"}"><strong>${escapeHtml(name)}</strong><span>${escapeHtml(meta)}</span></div>`;
+    })
+    .join("");
+}
+
+async function createPassportCard() {
+  try {
+    const canvas = document.createElement("canvas");
+    const stamps = passportStamps();
+    await drawPassportCard(canvas, {
+      visited: stamps.visited.length,
+      total: stamps.total,
+      works: stamps.worksSeen,
+      names: stamps.visited.map((stamp) => stamp.museum),
+    });
+    downloadPassportCard(canvas);
+    showToast("Passport card downloaded");
+  } catch (error) {
+    showToast("Could not create the passport card");
+  }
 }
 
 function setPhotoStatus(message, isError = false) {
@@ -862,6 +920,7 @@ function bindEvents() {
   document.getElementById("dialogCollection").addEventListener("click", openSaveDialog);
   document.getElementById("dialogSource").addEventListener("click", () => openSource(detailArtwork));
   document.getElementById("weeklyCard").addEventListener("click", (event) => createWeeklyCard(event.currentTarget));
+  document.getElementById("passportShare").addEventListener("click", createPassportCard);
   document.getElementById("activityMetric").addEventListener("click", (event) => {
     const button = event.target.closest("[data-metric]");
     if (!button) return;
@@ -922,7 +981,7 @@ async function initialize() {
   render();
   popupReady = true;
   const requestedView = new URLSearchParams(location.search).get("view");
-  if (["home", "gallery", "stats", "settings"].includes(requestedView)) setView(requestedView);
+  if (["home", "gallery", "passport", "stats", "settings"].includes(requestedView)) setView(requestedView);
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
