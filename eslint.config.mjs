@@ -4,6 +4,8 @@ import globals from "globals";
 
 const sharedScriptGlobals = {
   ARTWORKS: "readonly",
+  ARTWORK_MUSEUMS: "readonly",
+  artworkMuseum: "readonly",
   COLLECTIONS: "readonly",
   QUOTES: "readonly",
   MUSEUM_TOTAL: "readonly",
@@ -17,10 +19,13 @@ const sharedScriptGlobals = {
   loadArtImage: "readonly",
   loadImage: "readonly",
   drawWeekCard: "readonly",
-  downloadWeekCard: "readonly"
+  downloadWeekCard: "readonly",
+  drawPassportCard: "readonly",
+  downloadPassportCard: "readonly",
+  passportDateKey: "readonly"
 };
 
-const exportedLibraryNames = "^(ARTWORKS|COLLECTIONS|QUOTES|MUSEUM_TOTAL|MUSEUM_MILESTONES|museumStats|artGradient|artImageUrl|weekCardData|roundRectPath|commonsThumbUrl|loadArtImage|loadImage|drawWeekCard|downloadWeekCard|localDateKey)$";
+const exportedLibraryNames = "^(ARTWORKS|ARTWORK_MUSEUMS|artworkMuseum|COLLECTIONS|QUOTES|MUSEUM_TOTAL|MUSEUM_MILESTONES|museumStats|artGradient|artImageUrl|weekCardData|roundRectPath|commonsThumbUrl|loadArtImage|loadImage|drawWeekCard|downloadWeekCard|drawPassportCard|downloadPassportCard|passportDateKey|localDateKey)$";
 
 export default defineConfig([
   {
@@ -35,7 +40,8 @@ export default defineConfig([
       "background.js",
       "content/**/*.js",
       "lib/**/*.js",
-      "popup/**/*.js"
+      "popup/**/*.js",
+      "newtab/**/*.js"
     ],
     languageOptions: {
       ecmaVersion: "latest",
@@ -56,7 +62,8 @@ export default defineConfig([
     files: [
       "background.js",
       "content/**/*.js",
-      "popup/**/*.js"
+      "popup/**/*.js",
+      "newtab/**/*.js"
     ],
     languageOptions: {
       globals: sharedScriptGlobals

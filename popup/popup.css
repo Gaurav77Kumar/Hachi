@@ -107,8 +107,8 @@ button { border: 0; cursor: pointer; }
 .quick-menu button { display: flex; width: 100%; align-items: center; justify-content: space-between; padding: 10px 11px; border-radius: 7px; background: transparent; text-align: left; }
 .quick-menu button:hover { background: var(--panel-soft); }
 
-.main-nav { position: relative; z-index: 4; display: grid; height: 58px; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--line); background: var(--panel); }
-.nav-item { position: relative; justify-content: center; gap: 9px; background: transparent; color: var(--muted); font-size: 14px; }
+.main-nav { position: relative; z-index: 4; display: grid; height: 58px; grid-template-columns: repeat(5, 1fr); border-bottom: 1px solid var(--line); background: var(--panel); }
+.nav-item { position: relative; justify-content: center; gap: 7px; background: transparent; color: var(--muted); font-size: 12.5px; }
 .nav-item svg { width: 21px; height: 21px; }
 .nav-item::after { position: absolute; right: 18%; bottom: -1px; left: 18%; height: 2px; border-radius: 2px 2px 0 0; background: transparent; content: ""; }
 .nav-item:hover { color: var(--ink); }
@@ -238,6 +238,13 @@ select { min-width: 142px; height: 39px; padding: 0 34px 0 13px; border: 1px sol
 .collection-empty span { margin-top: 5px; color: var(--muted); font-size: 10px; }
 
 .detailed-stats { margin-top: 0; }
+.passport-panel { margin-top: 15px; padding: 20px; }
+.passport-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 17px; }
+.passport-stamp { min-width: 0; padding: 12px; border: 1px dashed var(--line); border-radius: 11px; background: var(--panel); }
+.passport-stamp.earned { border-style: solid; background: var(--accent-soft); }
+.passport-stamp.locked { opacity: 0.55; }
+.passport-stamp strong { display: block; overflow: hidden; font-family: Georgia, "Times New Roman", serif; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.passport-stamp span { display: block; margin-top: 5px; color: var(--muted); font-size: 9px; }
 .chart-panel, .styles-panel, .artists-panel { margin-top: 15px; padding: 20px; }
 .segmented { display: flex; padding: 3px; border-radius: 8px; background: var(--surface-deep); }
 .segmented button { padding: 7px 10px; border-radius: 6px; background: transparent; color: var(--muted); font-size: 9px; }
@@ -379,6 +386,8 @@ select { min-width: 142px; height: 39px; padding: 0 34px 0 13px; border: 1px sol
   .art-grid { grid-template-columns: repeat(2, 1fr); gap: 14px 9px; }
   .art-card-copy strong { font-size: 10px; }
   .collection-list { grid-template-columns: repeat(2, 1fr); }
+  .passport-grid { grid-template-columns: repeat(2, 1fr); }
+  .nav-item { gap: 5px; font-size: 9.5px; }
   .segmented button { padding: 6px 7px; font-size: 8px; }
   .bar-chart { gap: 7px; }
   .style-stats-content { grid-template-columns: 112px 1fr; gap: 15px; }

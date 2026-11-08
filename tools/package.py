@@ -23,6 +23,7 @@ RUNTIME_FILES = (
     "lib/quotes.js",
     "lib/museum.js",
     "lib/weekcard.js",
+    "lib/passport.js",
     "icons/icon16.png",
     "icons/icon32.png",
     "icons/icon48.png",
